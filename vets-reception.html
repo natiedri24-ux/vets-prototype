@@ -1385,10 +1385,10 @@ function App(){
         </nav>
 
         <div style={{padding:"10px 10px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
-          <button className="sb-btn" title={sideCollapsed?"▶ Start Demo":""} onClick={function(){setShowDemo(true);}}
+          <button className="sb-btn" title={sideCollapsed?"▶ Feature Tour":""} onClick={function(){setShowDemo(true);}}
             style={{display:"flex",alignItems:"center",gap:9,padding:sideCollapsed?"9px 0":"9px 11px",borderRadius:8,fontSize:12,cursor:"pointer",border:"1px solid rgba(99,179,237,0.25)",justifyContent:sideCollapsed?"center":"flex-start",width:"100%",marginBottom:4,...out,background:"rgba(99,179,237,0.08)",color:"rgba(147,210,255,0.9)"}}>
             <span style={{width:17,textAlign:"center",flexShrink:0,fontSize:13}}>▶</span>
-            {!sideCollapsed&&"Start Demo"}
+            {!sideCollapsed&&"Feature Tour"}
           </button>
           <button onClick={function(){try{localStorage.clear();}catch(e){}location.reload();}} title="Reset prototype to initial state"
             style={{display:"flex",alignItems:"center",gap:9,padding:sideCollapsed?"9px 0":"9px 11px",borderRadius:8,fontSize:11,cursor:"pointer",border:"1px solid rgba(220,38,38,0.25)",justifyContent:sideCollapsed?"center":"flex-start",width:"100%",marginBottom:4,...out,background:"rgba(220,38,38,0.08)",color:"rgba(252,165,165,0.9)"}}>
