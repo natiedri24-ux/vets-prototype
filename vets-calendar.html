@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VETS — Calendar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Sora:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html,body,#root{width:100%;height:100%;overflow:hidden}
+  body{font-family:'Outfit',sans-serif;background:#BDC9DC}
+  ::-webkit-scrollbar{width:4px;height:4px}
+  ::-webkit-scrollbar-thumb{background:#C8D0DC;border-radius:4px}
+  ::-webkit-scrollbar-track{background:transparent}
+  input,select,textarea{font-family:'Outfit',sans-serif}
+  input:focus,select:focus{outline:none}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+  .sb-btn:hover{background:rgba(255,255,255,0.08)!important}
+  .appt-row:hover{box-shadow:0 2px 12px rgba(0,0,0,0.10)!important;transform:translateY(-1px)}
+  .appt-row{transition:box-shadow 0.14s,transform 0.14s;cursor:pointer}
+  .slot-hover:hover{background:rgba(37,99,168,0.04)!important}
+  .slot-hover:hover .slot-add{opacity:1!important}
+  .client-row:hover{background:#EEF2F8!important;cursor:pointer}
+  .nav-btn:hover{background:#EEF2F8!important}
+  .week-col:hover .wk-add{opacity:1!important}
+  .search-inp:focus{border-color:#2563A8!important;box-shadow:0 0 0 3px rgba(37,99,168,0.12)!important}
+  .free-slot{cursor:pointer;transition:background 0.15s,border-color 0.15s}
+  .free-slot:hover{background:rgba(255,255,255,0.72)!important;border-color:rgba(37,99,168,0.35)!important}
+  .free-slot:hover .free-label{opacity:1!important}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useMemo,useRef} = React;
+
+// ── TOKENS ───────────────────────────────────────────────────────────────────
+const C = {
+  sb:"#0D1F35", sbH:"#152840", sbA:"#1C3252",
+  acc:"#2563A8", aLt:"#3B82C4", aDk:"#1a4a8a",
+  wh:"#FFFFFF", off:"#F4F6F9", off2:"#EEF1F6", off3:"#E5E9F0",
+  br:"#E2E7EF", br2:"#D1D8E4",
+  tx:"#0F172A", t2:"#475569", t3:"#94A3B8",
+  er:"#DC2626", rBg:"#FEF2F2", rBr:"#FECACA",
+  am:"#D97706", aBg:"#FFFBEB", aBr:"#FDE68A",
+  gn:"#059669", gBg:"#F0FDF4", gBr:"#BBF7D0",
+  pu:"#7C3AED", puBg:"#F5F3FF", puBr:"#DDD6FE",
+};
+const out={fontFamily:"'Outfit',sans-serif"};
+const sora={fontFamily:"'Sora',sans-serif"};
+const mono={fontFamily:"'DM Mono',monospace"};
+
+// ── STAFF ─────────────────────────────────────────────────────────────────────
+const STAFF=[
+  {id:"maya",name:"Maya Levi",role:"Head Receptionist",initials:"ML",color:"#2563A8",pin:"1234"},
+  {id:"tali",name:"Tali Cohen",role:"Receptionist",     initials:"TC",color:"#059669",pin:"5678"},
+  {id:"or",  name:"Or Shapiro",role:"Receptionist",     initials:"OS",color:"#7C3AED",pin:"9012"},
+];
+
+// ── VETS ─────────────────────────────────────────────────────────────────────
+const ALL_VETS=[
+  {id:"cohen",  name:"Dr. Cohen",  short:"SC", color:"#2563A8", bg:"#EFF6FF", br:"#BFDBFE"},
+  {id:"sharon", name:"Dr. Sharon", short:"MS", color:"#059669", bg:"#F0FDF4", br:"#86EFAC"},
+  {id:"levy",   name:"Dr. Levy",   short:"YL", color:"#7C3AED", bg:"#F5F3FF", br:"#DDD6FE"},
+];
+
+// ── VISIT TYPE META ──────────────────────────────────────────────────────────
+const TYPE_META={
+  "Medical Exam":  {color:C.am,  bg:C.aBg,  border:C.aBr,  dot:C.am,   proc:false},
+  "Annual Exam":   {color:C.gn,  bg:C.gBg,  border:C.gBr,  dot:C.gn,   proc:false},
+  "Vaccination":   {color:C.pu,  bg:C.puBg, border:C.puBr, dot:C.pu,   proc:false},
+  "Blood Test":    {color:C.er,  bg:C.rBg,  border:C.rBr,  dot:C.er,   proc:false},
+  "Procedure":     {color:C.acc, bg:"#EFF6FF",border:"#BFDBFE",dot:C.acc,proc:true},
+  "Dental":        {color:C.acc, bg:"#EFF6FF",border:"#BFDBFE",dot:C.acc,proc:true},
+  "Review":        {color:"#EA580C",bg:"#FFF7ED",border:"#FED7AA",dot:"#EA580C",proc:false},
+  "Sick Visit":    {color:C.er,  bg:C.rBg,  border:C.rBr,  dot:C.er,   proc:false},
+  "Grooming":      {color:"#0891B2",bg:"#F0F9FF",border:"#BAE6FD",dot:"#0891B2",proc:false},
+  "Follow-up":     {color:C.t2,  bg:C.off,  border:C.br,   dot:C.t3,   proc:false},
+  "Ultrasound":    {color:C.acc, bg:"#EFF6FF",border:"#BFDBFE",dot:C.acc,proc:true},
+  "Consultation":  {color:C.t2,  bg:C.off,  border:C.br,   dot:C.t3,   proc:false},
+};
+
+// ── CALENDAR CONSTANTS ───────────────────────────────────────────────────────
+const DAYS_SHORT=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS_FULL=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS_SHORT=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+const SLOT_START=9, SLOT_END=18;
+const SLOT_H=80;   // px per 30-min slot — generous for readability
+const SLOTS=[];
+for(var _h=SLOT_START;_h<=SLOT_END;_h++){SLOTS.push(_h*60);if(_h<SLOT_END)SLOTS.push(_h*60+30);}
+// 19 slots: 09:00→18:00
+
+// ── CLIENTS DB ───────────────────────────────────────────────────────────────
+const CLIENTS_DB=[
+  {id:"C-001",name:"Jane Doe",       phone:"045-220367", email:"j.hartman@email.com",pets:["Snoopy","Momo","Luna"]},
+  {id:"C-002",name:"Tom Katz",       phone:"052-1234567",email:"tom@gmail.com",      pets:["Whiskers"]},
+  {id:"C-003",name:"Sarah Miller",   phone:"054-9876543",email:"sarah@gmail.com",    pets:["Buddy"]},
+  {id:"C-004",name:"Ronen Ben-David",phone:"050-3332211",email:"ronen@gmail.com",    pets:["Momo"]},
+  {id:"C-005",name:"Noa Shapiro",    phone:"053-7778899",email:"noa@gmail.com",      pets:["Luna"]},
+  {id:"C-006",name:"Inbal Mor",      phone:"053-9988001",email:"inbal@gmail.com",    pets:["Mittens"]},
+  {id:"C-007",name:"Lior Golan",     phone:"053-2233445",email:"lior@gmail.com",     pets:["Jack"]},
+  {id:"C-008",name:"Rotem Dvir",     phone:"054-3344556",email:"rotem@gmail.com",    pets:["Rocky"]},
+  {id:"C-009",name:"Dana Levi",      phone:"052-8899001",email:"dana@gmail.com",     pets:["Charlie"]},
+  {id:"C-010",name:"Kobi Azoulay",   phone:"054-7765001",email:"kobi@gmail.com",     pets:["Max"]},
+  {id:"C-011",name:"Avi Mizrahi",    phone:"054-1122334",email:"avi@gmail.com",      pets:["Ginger"]},
+  {id:"C-012",name:"Miri Katz",      phone:"050-9988776",email:"miri@gmail.com",     pets:["Bobo"]},
+  {id:"C-013",name:"Yair Ben-Ami",   phone:"053-6677889",email:"yair@gmail.com",     pets:["Toto"]},
+  {id:"C-014",name:"Shira Cohen",    phone:"052-5566778",email:"shira@gmail.com",    pets:["Bella"]},
+  {id:"C-015",name:"Rivka Stern",    phone:"054-2244668",email:"rivka@gmail.com",    pets:["Coco"]},
+  {id:"C-016",name:"Dina Weiss",     phone:"050-1133557",email:"dina@gmail.com",     pets:["Rex"]},
+];
+
+// ── APPOINTMENT SEED DATA ────────────────────────────────────────────────────
+const _BASE=new Date();_BASE.setHours(0,0,0,0);
+function dOff(n){var d=new Date(_BASE);d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);}
+
+const APPTS_INIT=[
+  // Today — heavy
+  {id:"A001",date:dOff(0),time:"09:00",dur:30, vet:"cohen", client:"Jane Doe",       pet:"Snoopy",   breed:"Beagle",        type:"Medical Exam",  details:"Scratching and redness",        status:"done"},
+  {id:"A002",date:dOff(0),time:"09:00",dur:45, vet:"sharon",client:"Inbal Mor",      pet:"Mittens",  breed:"Domestic Cat",  type:"Dental",        details:"Dental cleaning",               status:"done"},
+  {id:"A003",date:dOff(0),time:"09:30",dur:30, vet:"cohen", client:"Tom Katz",       pet:"Whiskers", breed:"Persian Cat",   type:"Review",        details:"Skin allergy treatment",        status:"done"},
+  {id:"A004",date:dOff(0),time:"09:30",dur:30, vet:"sharon",client:"Lior Golan",     pet:"Jack",     breed:"Border Collie", type:"Blood Test",    details:"Pre-surgery blood work",        status:"done"},
+  {id:"A005",date:dOff(0),time:"09:30",dur:30, vet:"levy",  client:"Dana Levi",      pet:"Charlie",  breed:"Beagle",        type:"Vaccination",   details:"Annual DHPP booster",           status:"done"},
+  {id:"A006",date:dOff(0),time:"10:00",dur:30, vet:"cohen", client:"Noa Shapiro",    pet:"Luna",     breed:"Siamese Cat",   type:"Vaccination",   details:"Annual booster",                status:"arrived"},
+  {id:"A007",date:dOff(0),time:"10:00",dur:45, vet:"sharon",client:"Rotem Dvir",     pet:"Rocky",    breed:"German Shepherd",type:"Medical Exam", details:"Excessive licking and chewing", status:"arrived"},
+  {id:"A008",date:dOff(0),time:"10:00",dur:30, vet:"levy",  client:"Ronen Ben-David",pet:"Momo",     breed:"French Bulldog",type:"Annual Exam",   details:"Annual wellness check",          status:"arrived"},
+  {id:"A009",date:dOff(0),time:"10:30",dur:30, vet:"cohen", client:"Sarah Miller",   pet:"Buddy",    breed:"Golden Retriever",type:"Vaccination", details:"Rabies + Bordetella",           status:"scheduled"},
+  {id:"A010",date:dOff(0),time:"11:00",dur:60, vet:"cohen", client:"Dana Levi",      pet:"Charlie",  breed:"Beagle",        type:"Blood Test",    details:"Pre-surgery blood work",        status:"scheduled"},
+  {id:"A011",date:dOff(0),time:"11:00",dur:30, vet:"sharon",client:"Avi Mizrahi",    pet:"Ginger",   breed:"Domestic Cat",  type:"Medical Exam",  details:"Excessive licking",             status:"scheduled"},
+  {id:"A012",date:dOff(0),time:"11:00",dur:30, vet:"levy",  client:"Yair Ben-Ami",   pet:"Toto",     breed:"Border Collie", type:"Sick Visit",    details:"Vomiting since last night",     status:"scheduled"},
+  {id:"A013",date:dOff(0),time:"11:30",dur:30, vet:"sharon",client:"Miri Katz",      pet:"Bobo",     breed:"Chihuahua",     type:"Vaccination",   details:"Puppy series — 3rd dose",       status:"scheduled"},
+  {id:"A014",date:dOff(0),time:"12:00",dur:30, vet:"cohen", client:"Kobi Azoulay",   pet:"Max",      breed:"Labrador",      type:"Annual Exam",   details:"Full annual checkup",           status:"scheduled"},
+  {id:"A015",date:dOff(0),time:"12:00",dur:30, vet:"sharon",client:"Shira Cohen",    pet:"Bella",    breed:"Cocker Spaniel",type:"Grooming",      details:"Bath + nail trim",              status:"scheduled"},
+  {id:"A016",date:dOff(0),time:"12:00",dur:30, vet:"levy",  client:"Jane Doe",       pet:"Momo",     breed:"French Bulldog",type:"Follow-up",     details:"Post-vaccination check",        status:"scheduled"},
+  {id:"A017",date:dOff(0),time:"13:00",dur:120,vet:"levy",  client:"Kobi Azoulay",   pet:"Max",      breed:"Labrador",      type:"Procedure",     details:"ACL Repair — right hind leg",   status:"in-progress"},
+  {id:"A018",date:dOff(0),time:"13:00",dur:30, vet:"cohen", client:"Rivka Stern",    pet:"Coco",     breed:"Poodle",        type:"Sick Visit",    details:"Vomiting since last night",     status:"scheduled"},
+  {id:"A019",date:dOff(0),time:"13:30",dur:30, vet:"sharon",client:"Jane Doe",       pet:"Luna",     breed:"Siamese Cat",   type:"Vaccination",   details:"Feline core vaccines",          status:"scheduled"},
+  {id:"A020",date:dOff(0),time:"14:00",dur:60, vet:"cohen", client:"Rotem Dvir",     pet:"Rocky",    breed:"German Shepherd",type:"Procedure",    details:"Tumor biopsy — left flank",     status:"scheduled"},
+  {id:"A021",date:dOff(0),time:"14:00",dur:30, vet:"sharon",client:"Tom Katz",       pet:"Whiskers", breed:"Persian Cat",   type:"Review",        details:"Ear infection follow-up",       status:"scheduled"},
+  {id:"A022",date:dOff(0),time:"14:30",dur:30, vet:"cohen", client:"Noa Shapiro",    pet:"Luna",     breed:"Siamese Cat",   type:"Annual Exam",   details:"Annual wellness visit",         status:"scheduled"},
+  {id:"A023",date:dOff(0),time:"15:00",dur:45, vet:"sharon",client:"Lior Golan",     pet:"Jack",     breed:"Border Collie", type:"Ultrasound",    details:"Abdominal ultrasound",          status:"scheduled"},
+  {id:"A024",date:dOff(0),time:"15:30",dur:30, vet:"cohen", client:"Dina Weiss",     pet:"Rex",      breed:"German Shepherd",type:"Follow-up",    details:"Post-op leg fracture",          status:"scheduled"},
+  {id:"A025",date:dOff(0),time:"16:00",dur:30, vet:"sharon",client:"Ronen Ben-David",pet:"Momo",     breed:"French Bulldog",type:"Blood Test",    details:"Routine panel",                 status:"scheduled"},
+  {id:"A026",date:dOff(0),time:"16:30",dur:30, vet:"cohen", client:"Miri Katz",      pet:"Bobo",     breed:"Chihuahua",     type:"Vaccination",   details:"Core vaccines",                 status:"scheduled"},
+  {id:"A027",date:dOff(0),time:"17:00",dur:30, vet:"sharon",client:"Yair Ben-Ami",   pet:"Toto",     breed:"Border Collie", type:"Follow-up",     details:"Post-vaccination",              status:"scheduled"},
+  // Tomorrow — medium
+  {id:"A030",date:dOff(1),time:"09:00",dur:30, vet:"cohen", client:"Ronen Ben-David",pet:"Momo",     breed:"French Bulldog",type:"Annual Exam",   details:"Annual checkup",                status:"scheduled"},
+  {id:"A031",date:dOff(1),time:"09:30",dur:60, vet:"sharon",client:"Inbal Mor",      pet:"Mittens",  breed:"Domestic Cat",  type:"Dental",        details:"Tooth extraction",              status:"scheduled"},
+  {id:"A032",date:dOff(1),time:"10:00",dur:30, vet:"cohen", client:"Shira Cohen",    pet:"Bella",    breed:"Cocker Spaniel",type:"Vaccination",   details:"Rabies renewal",                status:"scheduled"},
+  {id:"A033",date:dOff(1),time:"10:00",dur:30, vet:"levy",  client:"Tom Katz",       pet:"Whiskers", breed:"Persian Cat",   type:"Blood Test",    details:"Senior panel",                  status:"scheduled"},
+  {id:"A034",date:dOff(1),time:"11:00",dur:90, vet:"levy",  client:"Kobi Azoulay",   pet:"Max",      breed:"Labrador",      type:"Procedure",     details:"Post-op imaging — ACL",         status:"scheduled"},
+  {id:"A035",date:dOff(1),time:"13:00",dur:30, vet:"cohen", client:"Yair Ben-Ami",   pet:"Toto",     breed:"Border Collie", type:"Sick Visit",    details:"Loss of appetite",              status:"scheduled"},
+  {id:"A036",date:dOff(1),time:"14:00",dur:60, vet:"sharon",client:"Rotem Dvir",     pet:"Rocky",    breed:"German Shepherd",type:"Procedure",    details:"Tumor biopsy — left flank",     status:"scheduled"},
+  {id:"A037",date:dOff(1),time:"15:30",dur:30, vet:"levy",  client:"Noa Shapiro",    pet:"Luna",     breed:"Siamese Cat",   type:"Vaccination",   details:"Annual booster",                status:"scheduled"},
+  // Day +2 — light
+  {id:"A040",date:dOff(2),time:"09:30",dur:30, vet:"cohen", client:"Sarah Miller",   pet:"Buddy",    breed:"Golden Retriever",type:"Annual Exam", details:"2-year checkup",                status:"scheduled"},
+  {id:"A041",date:dOff(2),time:"10:00",dur:30, vet:"sharon",client:"Dana Levi",      pet:"Charlie",  breed:"Beagle",        type:"Follow-up",     details:"Wound check",                   status:"scheduled"},
+  {id:"A042",date:dOff(2),time:"11:00",dur:45, vet:"levy",  client:"Avi Mizrahi",    pet:"Ginger",   breed:"Domestic Cat",  type:"Medical Exam",  details:"Recurring ear problems",        status:"scheduled"},
+  {id:"A043",date:dOff(2),time:"14:30",dur:60, vet:"sharon",client:"Inbal Mor",      pet:"Mittens",  breed:"Domestic Cat",  type:"Procedure",     details:"Cyst removal — back",           status:"scheduled"},
+  // Day +3 — heavy
+  {id:"A047",date:dOff(3),time:"09:00",dur:30, vet:"cohen", client:"Tom Katz",       pet:"Whiskers", breed:"Persian Cat",   type:"Annual Exam",   details:"Senior checkup",                status:"scheduled"},
+  {id:"A048",date:dOff(3),time:"09:00",dur:60, vet:"sharon",client:"Kobi Azoulay",   pet:"Max",      breed:"Labrador",      type:"Blood Test",    details:"Recovery bloodwork",            status:"scheduled"},
+  {id:"A049",date:dOff(3),time:"09:00",dur:30, vet:"levy",  client:"Miri Katz",      pet:"Bobo",     breed:"Chihuahua",     type:"Vaccination",   details:"Bordetella",                    status:"scheduled"},
+  {id:"A050",date:dOff(3),time:"10:00",dur:30, vet:"cohen", client:"Yair Ben-Ami",   pet:"Toto",     breed:"Border Collie", type:"Vaccination",   details:"Bordetella",                    status:"scheduled"},
+  {id:"A051",date:dOff(3),time:"11:00",dur:30, vet:"cohen", client:"Miri Katz",      pet:"Bobo",     breed:"Chihuahua",     type:"Sick Visit",    details:"Eye discharge",                 status:"scheduled"},
+  {id:"A052",date:dOff(3),time:"11:00",dur:30, vet:"sharon",client:"Noa Shapiro",    pet:"Luna",     breed:"Siamese Cat",   type:"Medical Exam",  details:"Sneezing, runny nose",          status:"scheduled"},
+  {id:"A053",date:dOff(3),time:"13:00",dur:120,vet:"sharon",client:"Inbal Mor",      pet:"Mittens",  breed:"Domestic Cat",  type:"Procedure",     details:"Splenectomy",                   status:"scheduled"},
+  {id:"A054",date:dOff(3),time:"13:00",dur:90, vet:"cohen", client:"Rotem Dvir",     pet:"Rocky",    breed:"German Shepherd",type:"Procedure",    details:"ACL repair follow-up imaging",  status:"scheduled"},
+  {id:"A055",date:dOff(3),time:"15:00",dur:30, vet:"cohen", client:"Lior Golan",     pet:"Jack",     breed:"Border Collie", type:"Follow-up",     details:"Post-procedure check",          status:"scheduled"},
+  {id:"A056",date:dOff(3),time:"15:30",dur:30, vet:"levy",  client:"Shira Cohen",    pet:"Bella",    breed:"Cocker Spaniel",type:"Vaccination",   details:"Annual vaccines",               status:"scheduled"},
+  // Day +4 — light
+  {id:"A060",date:dOff(4),time:"10:00",dur:30, vet:"cohen", client:"Rotem Dvir",     pet:"Rocky",    breed:"German Shepherd",type:"Follow-up",    details:"Post-biopsy check",             status:"scheduled"},
+  {id:"A061",date:dOff(4),time:"11:00",dur:30, vet:"sharon",client:"Dana Levi",      pet:"Charlie",  breed:"Beagle",        type:"Vaccination",   details:"Core vaccines",                 status:"scheduled"},
+  {id:"A062",date:dOff(4),time:"14:00",dur:30, vet:"levy",  client:"Sarah Miller",   pet:"Buddy",    breed:"Golden Retriever",type:"Medical Exam",details:"Limping — rear right",          status:"scheduled"},
+  // Day +5
+  {id:"A063",date:dOff(5),time:"09:30",dur:30, vet:"cohen", client:"Jane Doe",       pet:"Snoopy",   breed:"Beagle",        type:"Follow-up",     details:"Allergy re-check",              status:"scheduled"},
+  {id:"A064",date:dOff(5),time:"10:00",dur:30, vet:"sharon",client:"Tom Katz",       pet:"Whiskers", breed:"Persian Cat",   type:"Review",        details:"Kidney function review",        status:"scheduled"},
+  // Week +1
+  {id:"A070",date:dOff(7), time:"09:00",dur:30, vet:"cohen", client:"Jane Doe",     pet:"Snoopy",   breed:"Beagle",        type:"Follow-up",     details:"Allergy check",                 status:"scheduled"},
+  {id:"A071",date:dOff(7), time:"10:00",dur:30, vet:"sharon",client:"Tom Katz",     pet:"Whiskers", breed:"Persian Cat",   type:"Annual Exam",   details:"Annual checkup",                status:"scheduled"},
+  {id:"A072",date:dOff(7), time:"11:00",dur:90, vet:"levy",  client:"Inbal Mor",    pet:"Mittens",  breed:"Domestic Cat",  type:"Blood Test",    details:"Post-op bloodwork",             status:"scheduled"},
+  {id:"A073",date:dOff(8), time:"09:30",dur:30, vet:"cohen", client:"Yair Ben-Ami", pet:"Toto",     breed:"Border Collie", type:"Sick Visit",    details:"Coughing",                      status:"scheduled"},
+  {id:"A074",date:dOff(8), time:"14:00",dur:60, vet:"levy",  client:"Kobi Azoulay", pet:"Max",      breed:"Labrador",      type:"Procedure",     details:"Follow-up imaging",             status:"scheduled"},
+  {id:"A075",date:dOff(9), time:"10:00",dur:45, vet:"sharon",client:"Rotem Dvir",   pet:"Rocky",    breed:"German Shepherd",type:"Procedure",    details:"Cast removal",                  status:"scheduled"},
+  {id:"A076",date:dOff(10),time:"11:00",dur:30, vet:"cohen", client:"Noa Shapiro",  pet:"Luna",     breed:"Siamese Cat",   type:"Annual Exam",   details:"Annual check",                  status:"scheduled"},
+  {id:"A077",date:dOff(10),time:"13:00",dur:30, vet:"levy",  client:"Dana Levi",    pet:"Charlie",  breed:"Beagle",        type:"Vaccination",   details:"Core vaccines",                 status:"scheduled"},
+  // Yesterday
+  {id:"A080",date:dOff(-1),time:"09:30",dur:30,vet:"cohen", client:"Kobi Azoulay",  pet:"Max",      breed:"Labrador",      type:"Blood Test",    details:"Pre-op panel",                  status:"done"},
+  {id:"A081",date:dOff(-1),time:"10:00",dur:30,vet:"sharon",client:"Ronen Ben-David",pet:"Momo",   breed:"French Bulldog",type:"Annual Exam",   details:"Annual checkup",                status:"done"},
+  {id:"A082",date:dOff(-1),time:"14:00",dur:30,vet:"cohen", client:"Shira Cohen",   pet:"Bella",    breed:"Cocker Spaniel",type:"Vaccination",   details:"Lyme vaccine",                  status:"done"},
+  // 2 weeks ahead
+  {id:"A090",date:dOff(14),time:"10:00",dur:30,vet:"cohen", client:"Jane Doe",      pet:"Momo",     breed:"French Bulldog",type:"Vaccination",   details:"Annual vaccines",               status:"scheduled"},
+  {id:"A091",date:dOff(14),time:"11:00",dur:30,vet:"sharon",client:"Lior Golan",    pet:"Jack",     breed:"Border Collie", type:"Annual Exam",   details:"Annual checkup",                status:"scheduled"},
+  {id:"A092",date:dOff(14),time:"13:00",dur:90,vet:"levy",  client:"Rotem Dvir",    pet:"Rocky",    breed:"German Shepherd",type:"Procedure",    details:"Post-procedure imaging",        status:"scheduled"},
+];
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function todayStr(){return _BASE.toISOString().slice(0,10);}
+function minsToStr(m){var h=Math.floor(m/60),mn=m%60;return(h<10?"0":"")+h+":"+(mn<10?"0":"")+mn;}
+function timeToMins(t){var p=t.split(":");return parseInt(p[0])*60+parseInt(p[1]);}
+function timeToSlotIdx(t){return Math.round((timeToMins(t)-SLOT_START*60)/30);}
+function durToSlots(d){return Math.max(1,Math.ceil(d/30));}
+
+function getWeekDates(ref){
+  var d=new Date(ref),day=d.getDay(),diff=day===0?-6:1-day;
+  var mon=new Date(d);mon.setDate(d.getDate()+diff);
+  var arr=[];for(var i=0;i<7;i++){var nd=new Date(mon);nd.setDate(mon.getDate()+i);arr.push(nd);}
+  return arr;
+}
+function getMonthGrid(year,month){
+  var first=new Date(year,month,1),last=new Date(year,month+1,0);
+  var pad=first.getDay()===0?6:first.getDay()-1;
+  var arr=[];
+  for(var i=0;i<pad;i++){var d=new Date(first);d.setDate(d.getDate()-(pad-i));arr.push({date:d,in:false});}
+  for(var d=1;d<=last.getDate();d++)arr.push({date:new Date(year,month,d),in:true});
+  while(arr.length%7!==0){var ld=arr[arr.length-1].date,nd=new Date(ld);nd.setDate(ld.getDate()+1);arr.push({date:nd,in:false});}
+  return arr;
+}
+
+function apptsByDate(ds,appts){return appts.filter(function(a){return a.date===ds;});}
+function apptsByDateVet(ds,vid,appts){return appts.filter(function(a){return a.date===ds&&a.vet===vid;});}
+function getFreeBlocks(dateStr,vetId,appts){
+  var occupied={};
+  appts.filter(function(a){return a.date===dateStr&&a.vet===vetId;}).forEach(function(a){
+    var start=timeToMins(a.time);var slots=durToSlots(a.dur);
+    for(var i=0;i<slots;i++)occupied[start+i*30]=true;
+  });
+  var blocks=[],freeStart=null;
+  for(var h=SLOT_START;h<SLOT_END;h++){
+    for(var half=0;half<2;half++){
+      var mins=h*60+half*30;
+      if(!occupied[mins]){if(freeStart===null)freeStart=mins;}
+      else{if(freeStart!==null){blocks.push({start:freeStart,end:mins});freeStart=null;}}
+    }
+  }
+  if(freeStart!==null)blocks.push({start:freeStart,end:SLOT_END*60});
+  return blocks;
+}
+
+const MAX_VET_SLOTS=SLOTS.length; // 19
+function densityPct(ds,vids,appts){
+  var total=MAX_VET_SLOTS*vids.length;
+  var booked=appts.filter(function(a){return a.date===ds&&vids.indexOf(a.vet)>-1;}).reduce(function(s,a){return s+durToSlots(a.dur);},0);
+  return Math.min(100,Math.round(booked/total*100));
+}
+function vetDensityPct(ds,vid,appts){
+  var booked=appts.filter(function(a){return a.date===ds&&a.vet===vid;}).reduce(function(s,a){return s+durToSlots(a.dur);},0);
+  return Math.min(100,Math.round(booked/MAX_VET_SLOTS*100));
+}
+function densCol(p){return p>=80?C.er:p>=60?C.am:C.gn;}
+function densLbl(p){return p>=80?"Very busy":p>=60?"Busy":p>=30?"Moderate":"Light";}
+
+function fmtDayFull(d){
+  var dt=typeof d==="string"?new Date(d+"T00:00:00"):d;
+  return ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][dt.getDay()]+", "+MONTHS_FULL[dt.getMonth()]+" "+dt.getDate()+", "+dt.getFullYear();
+}
+function fmtMonthYear(d){return MONTHS_FULL[d.getMonth()]+" "+d.getFullYear();}
+
+// ── SMALL COMPONENTS ──────────────────────────────────────────────────────────
+function DensityBar({pct,h,showPct}){
+  var col=densCol(pct);
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:5}}>
+      <div style={{flex:1,height:h||5,background:"#E2E7EF",borderRadius:99,overflow:"hidden"}}>
+        <div style={{width:pct+"%",height:"100%",background:col,borderRadius:99,transition:"width 0.5s"}}/>
+      </div>
+      {showPct&&<span style={{fontSize:10,fontWeight:700,color:col,...mono,minWidth:32}}>{pct}%</span>}
+    </div>
+  );
+}
+
+function TypeDot({type,sz}){
+  var m=TYPE_META[type]||{dot:C.t3};
+  var s=sz||8;
+  return <span style={{display:"inline-block",width:s,height:s,borderRadius:"50%",background:m.dot,flexShrink:0}}/>;
+}
+
+function TypeBadge({type}){
+  var m=TYPE_META[type]||{color:C.t2,bg:C.off,border:C.br,dot:C.t3};
+  return(
+    <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"3px 9px",borderRadius:99,fontSize:11,fontWeight:700,background:m.bg,color:m.color,border:"1px solid "+m.border,whiteSpace:"nowrap",...out}}>
+      <span style={{width:6,height:6,borderRadius:"50%",background:m.dot,flexShrink:0}}/>
+      {type}
+    </span>
+  );
+}
+
+function VetChip({vetId,size}){
+  var v=ALL_VETS.find(function(x){return x.id===vetId;})||ALL_VETS[0];
+  var s=size||26;
+  return(
+    <div style={{width:s,height:s,borderRadius:"50%",background:v.color,color:"#fff",fontSize:s*0.38,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,...out}}>
+      {v.short}
+    </div>
+  );
+}
+
+// ── APPOINTMENT ROW (dashboard-style) ─────────────────────────────────────────
+function ApptRow({appt,onClick}){
+  var m=TYPE_META[appt.type]||{dot:C.t3,bg:C.off,border:C.br};
+  var isDone=appt.status==="done";
+  var isNow=appt.status==="in-progress";
+  var isArrived=appt.status==="arrived";
+  var isReady=appt.status==="ready";
+  var isLate=appt.status==="late";
+  var isCancelled=appt.status==="cancelled";
+  var statusPill=isDone?{lbl:"Done",c:C.t3,bg:"#F1F5F9"}:isNow?{lbl:"In Room",c:C.gn,bg:C.gBg}:isArrived?{lbl:"Arrived",c:C.am,bg:C.aBg}:isReady?{lbl:"Ready",c:C.gn,bg:C.gBg}:isLate?{lbl:"Running Late",c:C.er,bg:C.rBg}:isCancelled?{lbl:"Cancelled",c:C.t3,bg:"#F1F5F9"}:{lbl:"Upcoming",c:C.t3,bg:C.off};
+  var leftBorderCol=isNow?C.gn:isArrived?C.am:isReady?C.gn:isLate?C.er:isDone||isCancelled?"#CBD5E1":m.dot;
+
+  return(
+    <div className="appt-row" onClick={function(){if(onClick)onClick(appt);}}>
+      <div style={{display:"flex",background:isDone||isCancelled?"#FAFBFC":C.wh,borderRadius:12,border:"1px solid "+C.br,borderLeft:"4px solid "+leftBorderCol,marginBottom:6,overflow:"hidden",boxShadow:"0 1px 3px rgba(0,0,0,0.05)"}}>
+        {/* Time column */}
+        <div style={{width:66,flexShrink:0,padding:"14px 0 14px 12px",display:"flex",flexDirection:"column",alignItems:"flex-start",justifyContent:"center"}}>
+          <div style={{fontSize:17,fontWeight:800,color:isDone?C.t3:C.tx,lineHeight:1,...mono}}>{appt.time}</div>
+          <div style={{fontSize:11,color:C.t3,marginTop:2,...out}}>{appt.dur}min</div>
+        </div>
+        {/* Content */}
+        <div style={{flex:1,padding:"12px 10px",minWidth:0}}>
+          {(isNow||isReady)&&(
+            <div style={{display:"inline-flex",alignItems:"center",gap:4,padding:"1px 8px",background:isNow?C.acc:C.gn,color:"#fff",borderRadius:99,fontSize:10,fontWeight:700,marginBottom:4,...out}}>
+              <span style={{width:5,height:5,borderRadius:"50%",background:"#fff",animation:"pulse 1.5s infinite",display:"inline-block"}}/>
+              {isNow?"NOW IN ROOM":"READY FOR DISCHARGE"}
+            </div>
+          )}
+          <div style={{fontSize:14,fontWeight:700,color:isDone?C.t2:C.tx,lineHeight:1.3,...sora}}>{appt.client}</div>
+          <div style={{fontSize:12,color:C.t3,marginTop:2,marginBottom:6,...out}}>{appt.pet} <span style={{color:C.t3}}>·</span> {appt.breed}</div>
+          <TypeBadge type={appt.type}/>
+        </div>
+        {/* Status + arrow */}
+        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",justifyContent:"center",padding:"12px 12px 12px 6px",gap:6,flexShrink:0}}>
+          <span style={{padding:"3px 10px",borderRadius:99,fontSize:10,fontWeight:700,background:statusPill.bg,color:statusPill.c,...out}}>{statusPill.lbl}</span>
+          <span style={{fontSize:14,color:C.t3}}>›</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── DAY VIEW ──────────────────────────────────────────────────────────────────
+var FILTER_OPTIONS=[
+  {id:null,      label:"All",        color:C.t2},
+  {id:"exam",    label:"Exams",      color:C.am},
+  {id:"sick",    label:"Sick",       color:C.er},
+  {id:"vax",     label:"Vaccines",   color:C.pu},
+  {id:"lab",     label:"Labs",       color:"#EA580C"},
+  {id:"proc",    label:"Procedures", color:C.acc},
+  {id:"groom",   label:"Grooming",   color:"#0891B2"},
+  {id:"followup",label:"Follow-up",  color:C.t2},
+];
+
+function DayView({dateStr,appts,visibleVets,allVets,onToggleVet,onApptClick,onAddSlot,apptFilter,setApptFilter}){
+  function matchFilter(a){
+    if(!apptFilter)return true;
+    if(apptFilter==="exam")    return ["Medical Exam","Annual Exam","Consultation"].indexOf(a.type)>-1;
+    if(apptFilter==="sick")    return ["Sick Visit"].indexOf(a.type)>-1;
+    if(apptFilter==="vax")     return a.type==="Vaccination";
+    if(apptFilter==="lab")     return a.type==="Blood Test";
+    if(apptFilter==="proc")    return !!(TYPE_META[a.type]&&TYPE_META[a.type].proc);
+    if(apptFilter==="groom")   return a.type==="Grooming";
+    if(apptFilter==="followup")return ["Follow-up","Review"].indexOf(a.type)>-1;
+    return true;
+  }
+  var now=new Date();
+  var isToday=dateStr===todayStr();
+  var nowMins=now.getHours()*60+now.getMinutes();
+  var nowTopPct=isToday?((nowMins-SLOT_START*60)/((SLOT_END-SLOT_START)*60)*100):null;
+
+  // Split into procs and regular
+  var procTypes=["Procedure","Dental","Ultrasound"];
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",padding:"10px 12px 12px"}}>
+      <div style={{flex:1,display:"flex",flexDirection:"column",background:C.wh,borderRadius:14,boxShadow:"0 4px 28px rgba(0,0,0,0.10)",overflow:"hidden"}}>
+      {/* Vet column headers */}
+      <div style={{display:"flex",flexShrink:0,background:C.wh,borderBottom:"1px solid "+C.br}}>
+        {/* Time gutter header */}
+        <div style={{width:84,flexShrink:0,borderRight:"1px solid "+C.br,padding:"10px 0",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <span style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",...out}}>Time</span>
+        </div>
+        {/* Visible vet headers */}
+        {visibleVets.map(function(vet){
+          var pct=vetDensityPct(dateStr,vet.id,appts);
+          var col=densCol(pct);
+          var va=apptsByDateVet(dateStr,vet.id,appts);
+          var procs=va.filter(function(a){return procTypes.indexOf(a.type)>-1;});
+          return(
+            <div key={vet.id} style={{flex:1,padding:"10px 16px 8px",borderRight:"1px solid "+C.br,minWidth:0,borderTop:"3px solid "+vet.color}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                <VetChip vetId={vet.id} size={32}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700,color:C.tx,...sora}}>{vet.name}</div>
+                  <div style={{fontSize:11,fontWeight:700,color:col,...out}}>{densLbl(pct)} · {va.length} appt{va.length!==1?"s":""}{procs.length>0?" · "+procs.length+" proc":""}</div>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5}}>
+                  {visibleVets.length>1&&(
+                    <button onClick={function(e){e.stopPropagation();onToggleVet(vet.id);}}
+                      title={"Hide "+vet.name}
+                      style={{width:18,height:18,borderRadius:"50%",background:"rgba(0,0,0,0.05)",border:"1px solid "+C.br,color:C.t3,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,padding:0,...out}}>×</button>
+                  )}
+                  <div style={{fontSize:13,fontWeight:700,color:col,...mono}}>{pct}%</div>
+                </div>
+              </div>
+              <DensityBar pct={pct} h={6}/>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Filter strip */}
+      <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:5,padding:"5px 14px",borderBottom:"1px solid "+C.br,background:"#FAFBFC",flexShrink:0}}>
+        <span style={{fontSize:9,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.08em",...mono,marginRight:4,flexShrink:0}}>Filter</span>
+        {FILTER_OPTIONS.map(function(f){
+          var isAct=apptFilter===f.id;
+          return(
+            <button key={String(f.id)} onClick={function(){if(setApptFilter)setApptFilter(f.id);}}
+              style={{padding:"3px 10px",borderRadius:99,fontSize:11,fontWeight:isAct?700:500,
+                border:"1.5px solid "+(isAct?f.color:C.br),
+                background:isAct?f.color+"18":C.wh,
+                color:isAct?f.color:C.t2,cursor:"pointer",
+                transition:"all 0.13s",...out}}>
+              {f.label}
+            </button>
+          );
+        })}
+        {/* Add vet buttons — at end of filter strip */}
+        {allVets.filter(function(v){return visibleVets.findIndex(function(vv){return vv.id===v.id;})<0;}).length>0&&(
+          <div style={{marginLeft:"auto",display:"flex",gap:4,alignItems:"center",flexShrink:0}}>
+            {allVets.filter(function(v){return visibleVets.findIndex(function(vv){return vv.id===v.id;})<0;}).map(function(v){return(
+              <button key={v.id} onClick={function(){onToggleVet(v.id);}} title={"Show "+v.name}
+                style={{width:22,height:22,borderRadius:"50%",background:v.color+"18",border:"1.5px dashed "+v.color,color:v.color,fontSize:11,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,...out}}>
+                +
+              </button>
+            );})}
+          </div>
+        )}
+      </div>
+
+      {/* Scrollable time grid */}
+      <div style={{flex:1,overflowY:"auto",position:"relative"}}>
+        <div style={{display:"flex",position:"relative"}}>
+          {/* TIME GUTTER — large & bold */}
+          <div style={{width:84,flexShrink:0,borderRight:"1px solid "+C.br,position:"relative"}}>
+            {SLOTS.map(function(slotMin,idx){
+              var isHour=slotMin%60===0;
+              var h=Math.floor(slotMin/60);
+              var label=isHour?(h<10?"0":"")+h+":00":null;
+              return(
+                <div key={idx} style={{height:SLOT_H,borderBottom:"1px solid "+(isHour?C.br:"#F1F5F9"),display:"flex",alignItems:"flex-start",justifyContent:"flex-end",paddingRight:12,paddingTop:6}}>
+                  {isHour&&(
+                    <span style={{fontSize:13,fontWeight:700,color:C.t2,lineHeight:1,...mono}}>{label}</span>
+                  )}
+                  {!isHour&&(
+                    <span style={{fontSize:10,fontWeight:400,color:C.t3,lineHeight:1,...mono}}>:30</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Vet columns */}
+          {visibleVets.map(function(vet){
+            var va=apptsByDateVet(dateStr,vet.id,appts).sort(function(a,b){return timeToMins(a.time)-timeToMins(b.time);});
+            return(
+              <div key={vet.id} style={{flex:1,position:"relative",borderRight:"1px solid "+C.br,minWidth:0}}>
+                {/* Grid rows */}
+                {SLOTS.map(function(slotMin,idx){
+                  var isHour=slotMin%60===0;
+                  return(
+                    <div key={idx} className="slot-hover" style={{height:SLOT_H,borderBottom:"1px solid "+(isHour?C.br:"#F1F5F9"),position:"relative",transition:"background 0.1s"}}
+                      onClick={function(){if(onAddSlot)onAddSlot(vet.id,minsToStr(slotMin));}}>
+                      <span className="slot-add" style={{opacity:0,position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",width:22,height:22,borderRadius:"50%",background:C.acc,color:"#fff",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"opacity 0.15s",lineHeight:1,boxShadow:"0 2px 6px rgba(37,99,168,0.3)"}}>+</span>
+                    </div>
+                  );
+                })}
+                {/* Appointment cards */}
+                {va.filter(matchFilter).map(function(appt){
+                  var sidx=timeToSlotIdx(appt.time);
+                  if(sidx<0||sidx>=SLOTS.length)return null;
+                  var nslots=durToSlots(appt.dur);
+                  var top=sidx*SLOT_H+2;
+                  var height=nslots*SLOT_H-4;
+                  var m=TYPE_META[appt.type]||{dot:C.t3,bg:C.off,border:C.br};
+                  var isDone=appt.status==="done";
+                  var isNow=appt.status==="in-progress";
+                  var isArr=appt.status==="arrived";
+                  var lbc=isNow?C.gn:isArr?C.am:isDone?"#CBD5E1":m.dot;
+                  return(
+                    <div key={appt.id} className="appt-row" onClick={function(){if(onApptClick)onApptClick(appt);}}
+                      style={{position:"absolute",top:top,left:4,right:4,height:height,zIndex:2,
+                        background:isDone?"#FAFBFC":C.wh,border:"1px solid "+(isDone?C.br:"#D4DCE8"),
+                        borderLeft:"4px solid "+lbc,borderRadius:10,overflow:"hidden",padding:"8px 10px",
+                        boxShadow:isDone?"0 1px 3px rgba(0,0,0,0.04)":"0 2px 10px rgba(0,0,0,0.09),0 1px 2px rgba(0,0,0,0.04)"}}>
+                      {height>=56&&(
+                        <>
+                          {(isNow||isArr)&&(
+                            <div style={{display:"inline-flex",alignItems:"center",gap:3,padding:"1px 7px",background:isNow?C.acc:C.am,color:"#fff",borderRadius:99,fontSize:9,fontWeight:700,marginBottom:3,...out}}>
+                              <span style={{width:4,height:4,borderRadius:"50%",background:"#fff",animation:"pulse 1.5s infinite",display:"inline-block"}}/>
+                              {isNow?"IN ROOM":"ARRIVED"}
+                            </div>
+                          )}
+                          <div style={{fontSize:12,fontWeight:700,color:isDone?C.t3:C.tx,lineHeight:1.3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",...sora}}>{appt.client}</div>
+                          <div style={{fontSize:11,color:C.t3,marginBottom:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.pet} · {appt.breed}</div>
+                        </>
+                      )}
+                      {height<56&&(
+                        <div style={{fontSize:11,fontWeight:700,color:isDone?C.t3:C.tx,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.pet} · {appt.client.split(" ")[1]}</div>
+                      )}
+                      <TypeBadge type={appt.type}/>
+                    </div>
+                  );
+                })}
+                {/* Free slot indicators */}
+                {getFreeBlocks(dateStr,vet.id,appts).map(function(block,bi){
+                  var startIdx=(block.start-SLOT_START*60)/30;
+                  var endIdx=(block.end-SLOT_START*60)/30;
+                  var top=startIdx*SLOT_H+4;
+                  var height=(endIdx-startIdx)*SLOT_H-8;
+                  if(height<28)return null;
+                  return(
+                    <div key={bi} className="free-slot"
+                      onClick={function(){if(onAddSlot)onAddSlot(vet.id,minsToStr(block.start));}}
+                      style={{position:"absolute",top:top,left:6,right:6,height:height,zIndex:1,
+                        background:"rgba(37,99,168,0.025)",border:"1.5px dashed rgba(37,99,168,0.28)",borderRadius:8}}>
+                      <div className="free-label" style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",opacity:0,transition:"opacity 0.15s"}}>
+                        <span style={{fontSize:11,fontWeight:600,color:C.acc,...out}}>+ Add appointment</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* Current time line */}
+                {nowTopPct!==null&&(
+                  <div style={{position:"absolute",top:(nowTopPct/100)*((SLOTS.length-1)*SLOT_H),left:0,right:0,zIndex:10,pointerEvents:"none"}}>
+                    <div style={{height:2,background:C.er,position:"relative",boxShadow:"0 0 6px rgba(220,38,38,0.4)"}}>
+                      <div style={{position:"absolute",left:0,top:-5,width:12,height:12,borderRadius:"50%",background:C.er,boxShadow:"0 0 6px rgba(220,38,38,0.5)"}}/>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+// ── LIST VIEW (schedule view matching dashboard) ──────────────────────────────
+function ListView({dateStr,appts,visibleVets,onApptClick}){
+  var todayS=todayStr();
+  var visIds=visibleVets.map(function(v){return v.id;});
+  var dayAppts=appts.filter(function(a){return a.date===dateStr&&visIds.indexOf(a.vet)>-1;}).sort(function(a,b){return timeToMins(a.time)-timeToMins(b.time);});
+  var hasAny=dayAppts.length>0;
+  return(
+    <div style={{height:"100%",overflowY:"auto",padding:"16px 20px",background:"#E8EDF4"}}>
+      {!hasAny&&(
+        <div style={{textAlign:"center",padding:"60px 20px",color:C.t3,fontSize:14,...out}}>No appointments scheduled for this day.</div>
+      )}
+      {visibleVets.map(function(vet,vi){
+        var va=dayAppts.filter(function(a){return a.vet===vet.id;});
+        if(va.length===0)return null;
+        var regular=va.filter(function(a){return !TYPE_META[a.type]||!TYPE_META[a.type].proc;});
+        var procs=va.filter(function(a){return TYPE_META[a.type]&&TYPE_META[a.type].proc;});
+        return(
+          <div key={vet.id} style={{marginBottom:20}}>
+            {/* Vet section header */}
+            <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:10}}>
+              <VetChip vetId={vet.id} size={28}/>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.tx,...sora}}>{vet.name}</div>
+                <div style={{fontSize:11,color:C.t3,...out}}>{va.length} appointment{va.length!==1?"s":""}{procs.length>0?" · "+procs.length+" procedure"+(procs.length!==1?"s":""):""}</div>
+              </div>
+              <div style={{flex:1,height:1,background:vet.br||C.br,marginLeft:4}}/>
+            </div>
+            {/* Regular appointments */}
+            {regular.map(function(appt){return <ApptRow key={appt.id} appt={appt} onClick={onApptClick}/>;})}
+            {/* Procedures sub-section */}
+            {procs.length>0&&(
+              <div style={{marginTop:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                  <div style={{flex:1,height:1,background:C.br}}/>
+                  <span style={{fontSize:10,fontWeight:700,color:C.acc,textTransform:"uppercase",letterSpacing:"0.08em",background:C.off,padding:"2px 9px",borderRadius:99,border:"1px solid "+C.br,...out}}>🔧 Procedures ({procs.length})</span>
+                  <div style={{flex:1,height:1,background:C.br}}/>
+                </div>
+                {procs.map(function(appt){return <ApptRow key={appt.id} appt={appt} onClick={onApptClick}/>;})}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── WEEK VIEW ─────────────────────────────────────────────────────────────────
+function WeekView({weekDates,appts,visibleVets,onDayClick,onApptClick,onAddAppt}){
+  var todayS=todayStr();
+  var visIds=visibleVets.map(function(v){return v.id;});
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+      {/* Day headers with density */}
+      <div style={{display:"flex",flexShrink:0,background:C.wh,borderBottom:"2px solid "+C.br}}>
+        {weekDates.map(function(d){
+          var ds=d.toISOString().slice(0,10);
+          var isToday=ds===todayS;
+          var isPast=ds<todayS;
+          var pct=densityPct(ds,visIds,appts);
+          var col=densCol(pct);
+          var da=apptsByDate(ds,appts).filter(function(a){return visIds.indexOf(a.vet)>-1;});
+          var procs=da.filter(function(a){return TYPE_META[a.type]&&TYPE_META[a.type].proc;});
+          return(
+            <div key={ds} className="week-col" style={{flex:1,borderRight:"1px solid "+C.br,borderTop:isToday?"3px solid "+C.acc:"3px solid transparent",position:"relative",cursor:"pointer"}} onClick={function(){onDayClick(d);}}>
+              <div style={{padding:"10px 12px 8px",background:isToday?C.acc+"0D":"transparent"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                  <span style={{fontSize:11,fontWeight:700,color:isToday?C.acc:isPast?C.t3:C.t2,textTransform:"uppercase",letterSpacing:"0.06em",...out}}>{DAYS_SHORT[d.getDay()]}</span>
+                  <span style={{width:24,height:24,borderRadius:"50%",background:isToday?C.acc:"transparent",color:isToday?"#fff":isPast?C.t3:C.tx,fontSize:13,fontWeight:isToday?700:600,display:"inline-flex",alignItems:"center",justifyContent:"center",...mono}}>{d.getDate()}</span>
+                </div>
+                <DensityBar pct={pct} h={5} showPct={true}/>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
+                  <span style={{fontSize:10,color:col,fontWeight:600,...out}}>{densLbl(pct)}</span>
+                  {procs.length>0&&<span style={{fontSize:10,color:C.acc,fontWeight:700,...out}}>· {procs.length} proc</span>}
+                </div>
+              </div>
+              <button className="wk-add" onClick={function(e){e.stopPropagation();if(onAddAppt)onAddAppt(ds);}} style={{position:"absolute",top:8,right:8,opacity:0,width:20,height:20,borderRadius:"50%",background:C.acc,color:"#fff",border:"none",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"opacity 0.15s",lineHeight:1}}>+</button>
+            </div>
+          );
+        })}
+      </div>
+      {/* Appointments by day */}
+      <div style={{flex:1,display:"flex",overflowY:"auto"}}>
+        {weekDates.map(function(d){
+          var ds=d.toISOString().slice(0,10);
+          var isPast=ds<todayS;
+          var da=apptsByDate(ds,appts).filter(function(a){return visIds.indexOf(a.vet)>-1;}).sort(function(a,b){return timeToMins(a.time)-timeToMins(b.time);});
+          var regular=da.filter(function(a){return !TYPE_META[a.type]||!TYPE_META[a.type].proc;});
+          var procs=da.filter(function(a){return TYPE_META[a.type]&&TYPE_META[a.type].proc;});
+          return(
+            <div key={ds} style={{flex:1,borderRight:"1px solid "+C.br,display:"flex",flexDirection:"column",minWidth:0,background:isPast?"#FBFCFE":C.off+"66"}}>
+              {/* Regular appts — grouped by vet */}
+              <div style={{flex:1,overflowY:"auto",padding:"6px 4px 4px"}}>
+                {visibleVets.map(function(vet){
+                  var va=regular.filter(function(a){return a.vet===vet.id;});
+                  if(va.length===0)return null;
+                  return(
+                    <div key={vet.id}>
+                      <div style={{display:"flex",alignItems:"center",gap:3,padding:"2px 2px 2px",marginBottom:2}}>
+                        <div style={{width:7,height:7,borderRadius:"50%",background:vet.color,flexShrink:0}}/>
+                        <span style={{fontSize:9,fontWeight:700,color:vet.color,...out}}>{vet.short}</span>
+                      </div>
+                      {va.map(function(a){
+                        var m=TYPE_META[a.type]||{dot:C.t3,bg:C.off,border:C.br};
+                        var isDone=a.status==="done"||a.status==="cancelled";
+                        return(
+                          <div key={a.id} className="appt-row" onClick={function(){onApptClick(a);}}>
+                            <div style={{background:isDone?"#F8FAFC":C.wh,border:"1px solid "+C.br,borderLeft:"3px solid "+(isDone?"#CBD5E1":vet.color),borderRadius:8,padding:"5px 6px",marginBottom:3,opacity:isDone?0.65:1}}>
+                              <div style={{fontSize:10,color:C.t3,marginBottom:1,...mono}}>{a.time}</div>
+                              <div style={{fontSize:11,fontWeight:700,color:C.tx,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",...out}}>{a.pet} <span style={{fontWeight:400,color:C.t3}}>· {a.client.split(" ")[1]}</span></div>
+                              <div style={{display:"flex",alignItems:"center",gap:3,marginTop:2}}>
+                                <TypeDot type={a.type} sz={6}/>
+                                <span style={{fontSize:9,color:m.color||C.t3,fontWeight:600,...out}}>{a.type}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+                {regular.length===0&&procs.length===0&&<div style={{padding:"10px 4px",textAlign:"center",fontSize:10,color:C.t3,fontStyle:"italic"}}>—</div>}
+              </div>
+              {/* Procedures section */}
+              {procs.length>0&&(
+                <div style={{borderTop:"2px dashed "+C.acc+"44",background:"#EFF6FF",padding:"4px 4px 4px"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:C.acc,textTransform:"uppercase",letterSpacing:"0.08em",padding:"2px 4px 4px",...out}}>🔧 Procedures</div>
+                  {procs.map(function(a){
+                    return(
+                      <div key={a.id} className="appt-row" onClick={function(){onApptClick(a);}}>
+                        <div style={{background:"#EFF6FF",border:"1px solid #BFDBFE",borderLeft:"3px solid "+C.acc,borderRadius:8,padding:"4px 6px",marginBottom:3}}>
+                          <div style={{fontSize:10,color:C.t3,...mono}}>{a.time} · {a.dur}m</div>
+                          <div style={{fontSize:11,fontWeight:700,color:C.tx,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",...out}}>{a.pet}</div>
+                          <div style={{fontSize:9,color:C.acc,fontWeight:600,...out}}>{a.type}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── MONTH VIEW ────────────────────────────────────────────────────────────────
+function MonthView({viewDate,appts,visibleVets,onDayClick}){
+  var year=viewDate.getFullYear(),month=viewDate.getMonth();
+  var cells=getMonthGrid(year,month);
+  var todayS=todayStr();
+  var visIds=visibleVets.map(function(v){return v.id;});
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",flexShrink:0,background:C.wh,borderBottom:"1px solid "+C.br}}>
+        {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(function(d){return(
+          <div key={d} style={{padding:"8px 0",textAlign:"center",fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.07em",...out}}>{d}</div>
+        );})}
+      </div>
+      <div style={{flex:1,display:"grid",gridTemplateColumns:"repeat(7,1fr)",gridAutoRows:"1fr",overflowY:"auto"}}>
+        {cells.map(function(cell,idx){
+          var ds=cell.date.toISOString().slice(0,10);
+          var isToday=ds===todayS;
+          var isPast=ds<todayS;
+          var da=apptsByDate(ds,appts).filter(function(a){return visIds.indexOf(a.vet)>-1;});
+          var pct=densityPct(ds,visIds,appts);
+          var col=densCol(pct);
+          var procs=da.filter(function(a){return TYPE_META[a.type]&&TYPE_META[a.type].proc;});
+          var typeMap={};da.forEach(function(a){typeMap[a.type]=(typeMap[a.type]||0)+1;});
+          return(
+            <div key={idx} onClick={function(){if(cell.in)onDayClick(cell.date);}}
+              style={{border:"1px solid "+C.br,padding:"7px 8px",cursor:cell.in?"pointer":"default",background:isToday?C.acc+"0D":!cell.in?"#F8FAFC":isPast?"#FAFBFC":C.wh,opacity:!cell.in?0.45:1,minHeight:100}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                <span style={{width:26,height:26,borderRadius:"50%",background:isToday?C.acc:"transparent",color:isToday?"#fff":!cell.in?C.t3:isPast?C.t3:C.tx,fontSize:13,fontWeight:isToday?700:600,display:"inline-flex",alignItems:"center",justifyContent:"center",...mono}}>{cell.date.getDate()}</span>
+                {cell.in&&pct>0&&<span style={{fontSize:10,fontWeight:700,color:col,...mono}}>{pct}%</span>}
+              </div>
+              {cell.in&&pct>0&&<div style={{marginBottom:5}}><DensityBar pct={pct} h={4}/></div>}
+              {cell.in&&(
+                <div style={{display:"flex",flexWrap:"wrap",gap:2,marginBottom:3}}>
+                  {Object.keys(typeMap).slice(0,4).map(function(t){
+                    var m=TYPE_META[t]||{dot:C.t3,bg:C.off,border:C.br,color:C.t2};
+                    return(
+                      <span key={t} style={{display:"inline-flex",alignItems:"center",gap:2,fontSize:9,color:m.color,fontWeight:700,background:m.bg,borderRadius:99,padding:"1px 5px",border:"1px solid "+m.border,...out}}>
+                        <span style={{width:4,height:4,borderRadius:"50%",background:m.dot,display:"inline-block"}}/>
+                        {typeMap[t]}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+              {cell.in&&da.length>0&&(
+                <div style={{fontSize:9,color:C.t3,...out}}>{da.length} appt{da.length!==1?"s":""}{procs.length>0?" · "+procs.length+"🔧":""}</div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── APPOINTMENT DRAWER ────────────────────────────────────────────────────────
+var QUICK_STATUS=[
+  {key:"arrived",    lbl:"Arrived",      ico:"👋", c:C.am, bg:C.aBg,   br:C.aBr},
+  {key:"in-progress",lbl:"In Room",      ico:"🚪", c:C.gn, bg:C.gBg,   br:C.gBr},
+  {key:"late",       lbl:"Running Late", ico:"⏰", c:C.er, bg:C.rBg,   br:C.rBr},
+  {key:"scheduled",  lbl:"Upcoming",     ico:"📅", c:C.t2, bg:C.off,   br:C.br},
+  {key:"done",       lbl:"Done",         ico:"✓",  c:C.t3, bg:"#F1F5F9",br:C.br},
+  {key:"cancelled",  lbl:"Cancel",       ico:"✕",  c:C.er, bg:C.rBg,   br:C.rBr},
+];
+function ApptDrawer({appt,onClose,onStatusChange}){
+  if(!appt)return null;
+  var vet=ALL_VETS.find(function(v){return v.id===appt.vet;})||ALL_VETS[0];
+  var m=TYPE_META[appt.type]||{dot:C.t3,bg:C.off,border:C.br};
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:500,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={onClose}>
+      <div style={{position:"absolute",inset:0,background:"rgba(13,31,53,0.5)"}}/>
+      <div style={{position:"relative",background:C.wh,borderRadius:16,padding:"22px 22px 20px",width:"100%",maxWidth:440,boxShadow:"0 16px 56px rgba(0,0,0,0.26)",animation:"fadeIn 0.2s ease"}} onClick={function(e){e.stopPropagation();}}>
+
+        {/* ── Header: name + close ── */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14}}>
+          <div>
+            <div style={{fontSize:18,fontWeight:700,color:C.tx,marginBottom:5,...sora}}>{appt.client}</div>
+            <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+              <TypeBadge type={appt.type}/>
+              <div style={{display:"flex",alignItems:"center",gap:4,background:C.off,borderRadius:99,padding:"2px 8px",border:"1px solid "+C.br}}>
+                <VetChip vetId={appt.vet} size={14}/>
+                <span style={{fontSize:10,color:C.t2,fontWeight:600,...out}}>{vet.name}</span>
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{width:30,height:30,borderRadius:"50%",background:C.off,border:"1px solid "+C.br,color:C.t2,fontSize:16,cursor:"pointer",flexShrink:0,marginLeft:8}}>×</button>
+        </div>
+
+        {/* ── Section divider helper ── */}
+        {/* ── Appointment details card ── */}
+        <div style={{background:C.off,borderRadius:10,border:"1px solid "+C.br,padding:"12px 14px",marginBottom:18,display:"flex",gap:14,alignItems:"flex-start"}}>
+          <div style={{textAlign:"center",flexShrink:0,minWidth:52}}>
+            <div style={{fontSize:20,fontWeight:800,color:C.acc,lineHeight:1,...mono}}>{appt.time}</div>
+            <div style={{fontSize:10,color:C.t3,marginTop:3,...out}}>{appt.dur} min</div>
+          </div>
+          <div style={{width:1,background:C.br,alignSelf:"stretch",flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:600,color:C.tx,marginBottom:2,...sora}}>
+              {appt.pet} <span style={{fontWeight:400,color:C.t3}}>· {appt.breed}</span>
+            </div>
+            {appt.details&&<div style={{fontSize:12,color:C.t2,lineHeight:1.5,...out}}>{appt.details}</div>}
+          </div>
+        </div>
+
+        {/* ── Section divider ── */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+          <div style={{flex:1,height:1,background:C.br}}/>
+          <span style={{fontSize:9,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.1em",...out}}>Status</span>
+          <div style={{flex:1,height:1,background:C.br}}/>
+        </div>
+
+        {/* ── Quick Status ── */}
+        <div style={{marginBottom:18}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+            {QUICK_STATUS.map(function(s){
+              var isActive=appt.status===s.key;
+              return(
+                <button key={s.key} onClick={function(){if(onStatusChange)onStatusChange(appt.id,s.key);}}
+                  style={{padding:"8px 4px",borderRadius:8,
+                    border:"1.5px solid "+(isActive?s.c:C.br),
+                    background:isActive?s.bg:C.wh,
+                    color:isActive?s.c:C.t2,
+                    fontSize:11,fontWeight:isActive?700:500,
+                    cursor:"pointer",textAlign:"center",
+                    transition:"all 0.13s",
+                    boxShadow:isActive?"0 0 0 3px "+s.c+"18":"none",...out}}>
+                  <div style={{fontSize:15,marginBottom:2}}>{s.ico}</div>
+                  {s.lbl}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Section divider ── */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+          <div style={{flex:1,height:1,background:C.br}}/>
+          <span style={{fontSize:9,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.1em",...out}}>Actions</span>
+          <div style={{flex:1,height:1,background:C.br}}/>
+        </div>
+
+        {/* ── Actions ── */}
+        <div style={{display:"flex",gap:8}}>
+          <button style={{flex:1,padding:"9px",background:C.acc,color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",...out,boxShadow:"0 2px 8px rgba(37,99,168,0.28)"}}>✎ Edit</button>
+          <button onClick={function(){try{var _cl=CLIENTS_DB.find(function(c){return c.name===appt.client;});sessionStorage.setItem("vets_clientId",_cl?_cl.id:"C-001");}catch(e){}window.location.href="vets-client-file_8.html";}}
+            style={{flex:1,padding:"9px",background:C.off,color:C.t2,border:"1px solid "+C.br,borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",...out}}>
+            📋 Client File
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+// ── ADD APPOINTMENT MODAL ─────────────────────────────────────────────────────
+function AddApptModal({onClose,onSave,defaultDate,defaultVet,defaultClient,defaultTime,newClientBadge}){
+  var td=_BASE.toISOString().slice(0,10);
+  var _initClient=defaultClient?defaultClient.name:"";
+  var _initPet=defaultClient&&defaultClient.pets&&defaultClient.pets[0]?defaultClient.pets[0]:"";
+  var _locked=!!defaultClient;
+  var [form,setForm]=useState({client:_initClient,pet:_initPet,breed:"",vet:defaultVet||"cohen",date:defaultDate||td,time:defaultTime||"09:00",dur:30,type:"Medical Exam",details:""});
+  var [cq,setCq]=useState(_locked?"":_initClient);
+  var [cres,setCres]=useState([]);
+  var [clientLocked,setClientLocked]=useState(_locked);
+  useEffect(function(){
+    if(!cq.trim()){setCres([]);return;}
+    var q=cq.toLowerCase();
+    setCres(CLIENTS_DB.filter(function(c){return c.name.toLowerCase().includes(q)||c.phone.includes(q);}).slice(0,5));
+  },[cq]);
+  function pick(c){setForm(function(f){return Object.assign({},f,{client:c.name,pet:c.pets[0]||""});});setCq(c.name);setCres([]);setClientLocked(true);}
+  function unlockClient(){setForm(function(f){return Object.assign({},f,{client:"",pet:""});});setCq("");setCres([]);setClientLocked(false);}
+  function submit(){if(!form.client)return;onSave(Object.assign({},form,{id:"A-"+Date.now(),status:"scheduled"}));onClose();}
+  var inp={width:"100%",padding:"8px 11px",border:"1px solid "+C.br,borderRadius:8,fontSize:13,color:C.tx,background:C.wh,...out};
+  var lbl={fontSize:11,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em",display:"block",marginBottom:5,...out};
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
+      <div style={{position:"absolute",inset:0,background:"rgba(13,31,53,0.5)"}}/>
+      <div style={{position:"relative",background:C.wh,borderRadius:16,padding:24,width:440,maxWidth:"95%",boxShadow:"0 20px 60px rgba(0,0,0,0.22)",animation:"fadeIn 0.2s"}} onClick={function(e){e.stopPropagation();}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:newClientBadge?10:20}}>
+          <div style={{fontSize:17,fontWeight:700,color:C.tx,...sora}}>+ New Appointment</div>
+          <button onClick={onClose} style={{width:30,height:30,borderRadius:"50%",background:C.off,border:"1px solid "+C.br,color:C.t2,fontSize:18,cursor:"pointer"}}>×</button>
+        </div>
+        {newClientBadge&&(
+          <div style={{display:"flex",alignItems:"center",gap:8,background:"#F0FDF4",border:"1px solid #BBF7D0",borderRadius:8,padding:"8px 12px",marginBottom:14}}>
+            <span style={{fontSize:14}}>🆕</span>
+            <span style={{fontSize:12,color:"#15803D",fontWeight:600}}>New client registered</span>
+            <span style={{fontSize:12,color:"#166534",opacity:0.8}}>— client & pet details pre-filled below</span>
+          </div>
+        )}
+        <div style={{marginBottom:12,position:"relative"}}>
+          <label style={lbl}>Client</label>
+          {clientLocked?(
+            <div style={{display:"flex",alignItems:"center",gap:9,background:C.gBg,border:"1px solid "+C.gBr,borderRadius:9,padding:"9px 12px"}}>
+              <div style={{width:30,height:30,borderRadius:"50%",background:C.gn,color:"#fff",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,...out}}>
+                {form.client.split(" ").map(function(w){return w[0];}).join("").slice(0,2)}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:700,color:C.tx,...sora}}>{form.client}</div>
+                <div style={{fontSize:10,color:C.t2,...out}}>
+                  {form.pet||(CLIENTS_DB.find(function(c){return c.name===form.client;})||{pets:[]}).pets.join(" · ")}
+                  {newClientBadge&&<span style={{marginLeft:5,background:"#DCFCE7",color:"#15803D",borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:700}}>NEW</span>}
+                </div>
+              </div>
+              <button onClick={unlockClient} style={{width:22,height:22,borderRadius:"50%",background:C.gBr,border:"none",color:C.gn,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,lineHeight:1}}>×</button>
+            </div>
+          ):(
+            <>
+              <input value={cq} onChange={function(e){setCq(e.target.value);}} placeholder="Search name or phone…" style={inp} className="search-inp"/>
+              {cres.length>0&&(
+                <div style={{position:"absolute",top:"100%",left:0,right:0,background:C.wh,border:"1px solid "+C.br,borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",zIndex:10,marginTop:2,overflow:"hidden"}}>
+                  {cres.map(function(c){return(
+                    <div key={c.id} onClick={function(){pick(c);}} className="client-row" style={{padding:"9px 12px",borderBottom:"1px solid "+C.br,fontSize:13}}>
+                      <div style={{fontWeight:600,color:C.tx}}>{c.name}</div>
+                      <div style={{fontSize:11,color:C.t3}}>{c.phone} · {c.pets.join(", ")}</div>
+                    </div>
+                  );})}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          {[["pet","Pet","text",""],["vet","Vet","select",""],["date","Date","date",""],["time","Time","time",""],["type","Type","select",""],["dur","Duration","select",""]].map(function(f){
+            var key=f[0],lbl2=f[1],ftype=f[2];
+            return(
+              <div key={key}>
+                <label style={lbl}>{lbl2}</label>
+                {key==="pet"&&clientLocked&&(function(){
+                  var cl=CLIENTS_DB.find(function(c){return c.name===form.client;});
+                  var pets=cl?cl.pets:[];
+                  if(pets.length>1){
+                    return <select value={form.pet} onChange={function(e){setForm(function(f){return Object.assign({},f,{pet:e.target.value});});}} style={inp}>{pets.map(function(p){return <option key={p} value={p}>{p}</option>;})}</select>;
+                  }
+                  return <input type="text" value={form.pet} onChange={function(e){var v=e.target.value;setForm(function(f){return Object.assign({},f,{pet:v});});}} style={inp}/>;
+                })()}
+                {!(key==="pet"&&clientLocked)&&ftype==="select"&&key==="vet"&&<select value={form.vet} onChange={function(e){setForm(function(f){return Object.assign({},f,{vet:e.target.value});});}} style={inp}>{ALL_VETS.map(function(v){return <option key={v.id} value={v.id}>{v.name}</option>;})}</select>}
+                {!(key==="pet"&&clientLocked)&&ftype==="select"&&key==="type"&&<select value={form.type} onChange={function(e){setForm(function(f){return Object.assign({},f,{type:e.target.value});});}} style={inp}>{Object.keys(TYPE_META).map(function(t){return <option key={t} value={t}>{t}</option>;})}</select>}
+                {!(key==="pet"&&clientLocked)&&ftype==="select"&&key==="dur"&&<select value={form.dur} onChange={function(e){setForm(function(f){return Object.assign({},f,{dur:parseInt(e.target.value)});});}} style={inp}>{[15,30,45,60,90,120].map(function(d){return <option key={d} value={d}>{d} min</option>;})}</select>}
+                {!(key==="pet"&&clientLocked)&&ftype!=="select"&&<input type={ftype} value={form[key]} onChange={function(e){var v=e.target.value;setForm(function(f){return Object.assign({},f,{[key]:v});});}} style={inp}/>}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{marginBottom:16}}>
+          <label style={lbl}>Notes</label>
+          <textarea value={form.details} onChange={function(e){setForm(function(f){return Object.assign({},f,{details:e.target.value});});}} rows={2} placeholder="Reason for visit…" style={Object.assign({},inp,{resize:"vertical"})}/>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onClose} style={{flex:1,padding:"10px",background:C.off,color:C.t2,border:"1px solid "+C.br,borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancel</button>
+          <button onClick={submit} style={{flex:2,padding:"10px",background:C.acc,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",...out}}>Save Appointment</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── RIGHT PANEL ───────────────────────────────────────────────────────────────
+function RightPanel({viewDate,view,appts,visibleVets,onAddAppt,lastClient,initialClient}){
+  var [searchQ,setSearchQ]=useState("");
+  var [sres,setSres]=useState(null);
+  var [selClient,setSelClient]=useState(initialClient||null);
+  var visIds=visibleVets.map(function(v){return v.id;});
+
+  function doSearch(val){
+    var v=val.trim().toLowerCase();
+    if(!v){setSres(null);return;}
+    setSres(CLIENTS_DB.filter(function(c){
+      return c.name.toLowerCase().includes(v)||
+        c.phone.replace(/-/g,"").includes(v.replace(/-/g,""))||
+        c.pets.some(function(p){return p.toLowerCase().includes(v);});
+    }).slice(0,6));
+  }
+
+  var ds=viewDate.toISOString().slice(0,10);
+  var pct=densityPct(ds,visIds,appts);
+  var totalAppts=apptsByDate(ds,appts).filter(function(a){return visIds.indexOf(a.vet)>-1;}).length;
+
+  return(
+    <div id="cal-tour-rightpanel" style={{width:272,flexShrink:0,display:"flex",flexDirection:"column",background:"#E0E6EF",padding:10,gap:10,overflowY:"auto"}}>
+
+      {/* ── Card 1: Day Summary (only in day view) ── */}
+      {view==="day"&&(
+        <div style={{background:C.sb,borderRadius:14,padding:"14px 14px 12px",flexShrink:0,boxShadow:"0 4px 20px rgba(13,31,53,0.3)",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 80% 0%,rgba(37,99,168,0.18) 0%,transparent 60%)",pointerEvents:"none"}}/>
+          <div style={{fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",color:"rgba(255,255,255,0.4)",marginBottom:2,...mono}}>Day Summary</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#fff",marginBottom:10,...sora}}>{DAYS_SHORT[viewDate.getDay()]+", "+viewDate.getDate()+" "+MONTHS_SHORT[viewDate.getMonth()]}</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat("+visibleVets.length+",1fr)",gap:6,marginBottom:10}}>
+            {visibleVets.map(function(vet){
+              var vp=vetDensityPct(ds,vet.id,appts);
+              var vc=vp>=80?"#FCA5A5":vp>=60?"#FCD34D":"#86EFAC";
+              var va=apptsByDateVet(ds,vet.id,appts).length;
+              return(
+                <div key={vet.id} style={{background:"rgba(255,255,255,0.07)",borderRadius:10,padding:"8px 6px",textAlign:"center",border:"1px solid rgba(255,255,255,0.08)"}}>
+                  <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",marginBottom:2,...out}}>{vet.short}</div>
+                  <div style={{fontSize:20,fontWeight:800,color:vc,lineHeight:1,...mono}}>{vp}%</div>
+                  <div style={{fontSize:9,color:"rgba(255,255,255,0.35)",marginTop:1,...out}}>{va} appts</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{background:"rgba(255,255,255,0.1)",borderRadius:99,height:5,marginBottom:4,overflow:"hidden"}}>
+            <div style={{height:"100%",width:pct+"%",background:pct>=80?"#FCA5A5":pct>=60?"#FCD34D":"#86EFAC",borderRadius:99,transition:"width 0.5s"}}/>
+          </div>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",...out}}>Overall {pct}% · {totalAppts} appointments</div>
+        </div>
+      )}
+
+      {/* ── Card 2: Client + Book ── */}
+      <div style={{background:C.wh,borderRadius:14,padding:"14px 14px",boxShadow:"0 2px 14px rgba(0,0,0,0.08)"}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.09em",marginBottom:10,...mono}}>Book Appointment</div>
+
+        {/* Last client quick-book */}
+        {lastClient&&!selClient&&!searchQ&&(
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:9,fontWeight:700,color:C.t3,textTransform:"uppercase",letterSpacing:"0.09em",marginBottom:4,...mono}}>Recent</div>
+            <button onClick={function(){setSelClient(lastClient);}}
+              style={{width:"100%",padding:"7px 10px",background:C.off,border:"1px solid "+C.br,borderRadius:8,cursor:"pointer",textAlign:"left",...out,display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:24,height:24,borderRadius:"50%",background:"rgba(37,99,168,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:C.acc,flexShrink:0,...out}}>
+                {lastClient.name.split(" ").map(function(w){return w[0];}).join("").slice(0,2)}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:12,fontWeight:600,color:C.tx,...sora,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lastClient.name}</div>
+                <div style={{fontSize:10,color:C.t3,...mono}}>{lastClient.pets.join(", ")}</div>
+              </div>
+              <span style={{fontSize:10,fontWeight:700,color:C.acc,...out}}>Book →</span>
+            </button>
+          </div>
+        )}
+
+        {/* Search input */}
+        <div style={{position:"relative",marginBottom:8}}>
+          <input
+            value={searchQ}
+            onChange={function(e){setSearchQ(e.target.value);doSearch(e.target.value);}}
+            onKeyDown={function(e){if(e.key==="Escape"){setSearchQ("");setSres(null);}}}
+            placeholder="Search client — name, phone, pet…"
+            className="search-inp"
+            style={{width:"100%",padding:"9px 34px 9px 11px",border:"1px solid "+C.br,borderRadius:9,fontSize:12,color:C.tx,background:C.off,...out}}/>
+          <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:C.t3,pointerEvents:"none"}}>🔍</span>
+        </div>
+
+        {/* Search results dropdown */}
+        {sres!==null&&(
+          <div style={{borderRadius:9,border:"1px solid "+C.br,overflow:"hidden",marginBottom:8,background:C.wh,boxShadow:"0 6px 20px rgba(0,0,0,0.1)",maxHeight:190,overflowY:"auto"}}>
+            {sres.length===0?(
+              <div style={{padding:"11px 12px",fontSize:12,color:C.t3,textAlign:"center",...out}}>No clients found</div>
+            ):(
+              sres.map(function(c,i){return(
+                <button key={c.id} onClick={function(){setSelClient(c);setSearchQ("");setSres(null);}}
+                  style={{width:"100%",padding:"9px 12px",background:"transparent",border:"none",borderTop:i>0?"1px solid "+C.br:"none",cursor:"pointer",textAlign:"left",...out}}
+                  className="client-row">
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,background:"rgba(37,99,168,0.1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:C.acc,...out}}>
+                      {c.name.split(" ").map(function(w){return w[0];}).join("").slice(0,2)}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12,fontWeight:600,color:C.tx,...sora,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{c.name}</div>
+                      <div style={{fontSize:10,color:C.t3,...mono}}>{c.phone} · {c.pets.join(", ")}</div>
+                    </div>
+                    <span style={{fontSize:11,color:C.t3}}>→</span>
+                  </div>
+                </button>
+              );})
+            )}
+          </div>
+        )}
+
+        {/* Selected client chip */}
+        {selClient&&(
+          <div style={{background:C.gBg,border:"1px solid "+C.gBr,borderRadius:9,padding:"9px 11px",marginBottom:10,display:"flex",alignItems:"center",gap:9}}>
+            <div style={{width:32,height:32,borderRadius:"50%",background:C.gn,color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,...out}}>
+              {selClient.name.split(" ").map(function(w){return w[0];}).join("").slice(0,2)}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:700,color:C.tx,...sora}}>{selClient.name}</div>
+              <div style={{fontSize:10,color:C.t2,...out}}>{selClient.pets.join(" · ")}</div>
+            </div>
+            <button onClick={function(){setSelClient(null);}} style={{width:22,height:22,borderRadius:"50%",background:C.gBr,border:"none",color:C.gn,fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>×</button>
+          </div>
+        )}
+
+        {/* Book button — primary CTA */}
+        <button onClick={function(){if(!selClient)return;onAddAppt(selClient);}}
+          style={{width:"100%",padding:"12px 0",background:selClient?C.acc:"#C8D0DC",color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:700,cursor:selClient?"pointer":"default",boxShadow:selClient?"0 3px 12px rgba(37,99,168,0.32)":"none",transition:"background 0.2s,box-shadow 0.2s",...out}}>
+          {selClient?"+ Book for "+selClient.name.split(" ")[0]:"Search for a client above"}
+        </button>
+
+        {/* Utility row */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:8}}>
+          <button style={{padding:"7px 0",background:"transparent",color:C.t3,border:"1px solid "+C.br,borderRadius:8,fontSize:11,fontWeight:500,cursor:"pointer",...out}}>+ New Client</button>
+          <button style={{padding:"7px 0",background:"transparent",color:C.t3,border:"1px solid "+C.br,borderRadius:8,fontSize:11,fontWeight:500,cursor:"pointer",...out}}>📋 Snapshot</button>
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+var TOUR_STEPS_CALENDAR=[
+  {id:"cal-tour-viewtabs", placement:"bottom", title:"Day / Week / Month Views",         desc:"Switch between three calendar views. Day shows each vet as a column with time slots. Week shows a 7-day grid. Month shows a full overview — click any day to drill into it."},
+  {id:"cal-tour-new-appt", placement:"bottom", title:"Book a New Appointment",            desc:"Opens the booking form. You can select client, pet, vet, date, time, and visit type. Pre-filled when you click a time slot on the grid — no duplicate entry."},
+  {id:"cal-tour-nav",      placement:"bottom", title:"Date Navigation",                  desc:"Step back and forward by day, week, or month depending on your current view. 'Today' snaps back to the current date instantly."},
+  {id:"cal-tour-grid",     placement:"top",    title:"The Schedule Grid",                desc:"Appointments appear as color-coded blocks by visit type. Click any block to open its detail panel. Click an empty slot to open the booking form pre-filled with that time and vet."},
+  {id:"cal-tour-vets",     placement:"right",  title:"Vet Visibility Toggles",           desc:"Show or hide each vet's column independently. Useful when a vet is out, or when you want to focus on one vet's load for the day."},
+  {id:"cal-tour-rightpanel",placement:"left",  title:"Today's Appointments List",        desc:"The right panel lists all appointments for the selected date. Use it to quickly scan who's coming in, filter by status, and jump to a specific appointment without hunting the grid."},
+];
+
+function TooltipTourCalendar({onDone}){
+  var [idx,setIdx]=useState(0);
+  var [pos,setPos]=useState(null);
+  var step=TOUR_STEPS_CALENDAR[idx];
+  useEffect(function(){
+    var el=document.getElementById(step.id);
+    if(!el){setPos(null);return;}
+    el.scrollIntoView({block:"nearest",inline:"nearest"});
+    function measure(){var r=el.getBoundingClientRect();setPos({top:r.top,left:r.left,width:r.width,height:r.height,placement:step.placement});}
+    var t=setTimeout(measure,60);
+    window.addEventListener("resize",measure);
+    return function(){clearTimeout(t);window.removeEventListener("resize",measure);};
+  },[idx]);
+  if(!pos)return null;
+  var TW=300,PAD=16;
+  var tLeft=pos.left,tTop=pos.top;
+  if(pos.placement==="bottom"){tTop=pos.top+pos.height+PAD;tLeft=pos.left+(pos.width/2)-(TW/2);}
+  else if(pos.placement==="right"){tLeft=pos.left+pos.width+PAD;tTop=pos.top+(pos.height/2)-80;}
+  else if(pos.placement==="left"){tLeft=pos.left-TW-PAD;tTop=pos.top+(pos.height/2)-80;}
+  else{tTop=pos.top-160-PAD;tLeft=pos.left+(pos.width/2)-(TW/2);}
+  tLeft=Math.max(10,Math.min(tLeft,window.innerWidth-TW-10));
+  tTop=Math.max(10,Math.min(tTop,window.innerHeight-180));
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:9000,pointerEvents:"none"}}>
+      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} xmlns="http://www.w3.org/2000/svg">
+        <defs><mask id="calTourMask"><rect width="100%" height="100%" fill="white"/><rect x={pos.left-6} y={pos.top-6} width={pos.width+12} height={pos.height+12} rx="10" fill="black"/></mask></defs>
+        <rect width="100%" height="100%" fill="rgba(10,25,47,0.62)" mask="url(#calTourMask)"/>
+      </svg>
+      <div style={{position:"absolute",left:pos.left-6,top:pos.top-6,width:pos.width+12,height:pos.height+12,borderRadius:10,boxShadow:"0 0 0 3px #2563A8,0 0 0 6px rgba(37,99,168,0.22)",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",left:tLeft,top:tTop,width:TW,background:"#fff",borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,0.22)",padding:"18px 18px 14px",pointerEvents:"all",fontFamily:"'Outfit',sans-serif"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <span style={{fontSize:10,fontWeight:700,color:"#94A3B8",fontFamily:"DM Mono,monospace",letterSpacing:"0.1em",textTransform:"uppercase"}}>{idx+1} / {TOUR_STEPS_CALENDAR.length}</span>
+          <button onClick={onDone} style={{background:"none",border:"none",fontSize:14,color:"#94A3B8",cursor:"pointer",padding:"2px 4px"}}>✕</button>
+        </div>
+        <div style={{display:"flex",gap:5,marginBottom:10}}>
+          {TOUR_STEPS_CALENDAR.map(function(_,i){return <div key={i} style={{width:i===idx?18:6,height:6,borderRadius:99,background:i===idx?"#2563A8":"#E2E7EF",transition:"width 0.2s,background 0.2s"}}/>;}) }
+        </div>
+        <div style={{fontSize:13,fontWeight:700,color:"#0F172A",marginBottom:5,fontFamily:"Sora,sans-serif"}}>{step.title}</div>
+        <div style={{fontSize:12,color:"#475569",lineHeight:1.55,marginBottom:14}}>{step.desc}</div>
+        <div style={{display:"flex",gap:8}}>
+          {idx>0&&<button onClick={function(){setIdx(function(i){return i-1;});setPos(null);}} style={{flex:1,padding:"7px",background:"#F4F6F9",color:"#475569",border:"1px solid #E2E7EF",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}}>← Back</button>}
+          <button onClick={function(){if(idx<TOUR_STEPS_CALENDAR.length-1){setIdx(function(i){return i+1;});setPos(null);}else{onDone();}}} style={{flex:2,padding:"8px",background:"#2563A8",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            {idx<TOUR_STEPS_CALENDAR.length-1?"Next →":"Finish Tour ✓"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App(){
+  var [sideCollapsed,setSideCollapsed]=useState(false);
+  var [staffOpen,setStaffOpen]=useState(false);
+  var [activeStaff,setActiveStaff]=useState(STAFF[0]);
+  var [view,setView]=useState("day");
+  var [viewDate,setViewDate]=useState(new Date(_BASE));
+  var [visibleVetIds,setVisibleVetIds]=useState(["cohen","sharon"]); // default: 2 vets
+  var [appts,setAppts]=useState(APPTS_INIT);
+  var [selAppt,setSelAppt]=useState(null);
+  var [showAdd,setShowAdd]=useState(false);
+  var [showDemo,setShowDemo]=useState(false);
+  var [addDef,setAddDef]=useState({});
+  var [nowTime,setNowTime]=useState(new Date());
+  var [toast,setToast]=useState(null);
+  var [lastClient,setLastClient]=useState(null);
+  var [apptFilter,setApptFilter]=useState(null);
+  var [deepLinkClient]=useState(function(){
+    try{
+      var name=sessionStorage.getItem("vets_calClient");
+      if(name){sessionStorage.removeItem("vets_calClient");return CLIENTS_DB.find(function(c){return c.name===name;})||null;}
+    }catch(e){}
+    return null;
+  });
+  /* new-client → auto-open Book Appointment with prefilled data */
+  var [newClientAppt]=useState(function(){
+    try{
+      var raw=sessionStorage.getItem("vets_newApptClient");
+      if(raw){sessionStorage.removeItem("vets_newApptClient");return JSON.parse(raw);}
+    }catch(e){}
+    return null;
+  });
+  function showToast(msg){setToast(msg);setTimeout(function(){setToast(null);},3000);}
+
+  useEffect(function(){var t=setInterval(function(){setNowTime(new Date());},30000);return function(){clearInterval(t);};},[]);
+  /* auto-open AddApptModal when arriving from new-client flow */
+  useEffect(function(){
+    if(newClientAppt){
+      setAddDef({
+        clientName:newClientAppt.name,
+        petName:newClientAppt.petName,
+        petIcon:newClientAppt.petIcon,
+        isNew:true,
+        date:viewDate.toISOString().slice(0,10),
+      });
+      setShowAdd(true);
+    }
+  },[]);
+  useEffect(function(){
+    if(selAppt){var cl=CLIENTS_DB.find(function(c){return c.name===selAppt.client;});if(cl)setLastClient(cl);}
+  },[selAppt]);
+
+  var weekDates=useMemo(function(){return getWeekDates(viewDate);},[viewDate]);
+  var visibleVets=ALL_VETS.filter(function(v){return visibleVetIds.indexOf(v.id)>-1;});
+
+  function toggleVet(vid){
+    setVisibleVetIds(function(ids){
+      if(ids.indexOf(vid)>-1){if(ids.length<=1)return ids;return ids.filter(function(x){return x!==vid;});}
+      return ids.concat([vid]);
+    });
+  }
+
+  function goNext(){var d=new Date(viewDate);if(view==="day")d.setDate(d.getDate()+1);else if(view==="week")d.setDate(d.getDate()+7);else d.setMonth(d.getMonth()+1);setViewDate(d);}
+  function goPrev(){var d=new Date(viewDate);if(view==="day")d.setDate(d.getDate()-1);else if(view==="week")d.setDate(d.getDate()-7);else d.setMonth(d.getMonth()-1);setViewDate(d);}
+  function goToday(){setViewDate(new Date(_BASE));}
+
+  function navLabel(){
+    if(view==="day")return fmtDayFull(viewDate);
+    if(view==="week"){var wd=getWeekDates(viewDate);return MONTHS_SHORT[wd[0].getMonth()]+" "+wd[0].getDate()+" – "+MONTHS_SHORT[wd[6].getMonth()]+" "+wd[6].getDate()+", "+wd[6].getFullYear();}
+    return fmtMonthYear(viewDate);
+  }
+
+  function handleAddAppt(client){setAddDef({client:client||null,date:viewDate.toISOString().slice(0,10)});setShowAdd(true);}
+  function saveAppt(appt){setAppts(function(prev){return [appt].concat(prev);});showToast("✓ Appointment booked — "+appt.client+" · "+appt.pet+" · "+appt.time);}
+  function changeApptStatus(id,newStatus){
+    setAppts(function(prev){return prev.map(function(a){return a.id===id?Object.assign({},a,{status:newStatus}):a;});});
+    setSelAppt(function(prev){return prev&&prev.id===id?Object.assign({},prev,{status:newStatus}):prev;});
+    var lbl=QUICK_STATUS.find(function(s){return s.key===newStatus;});if(lbl)showToast("Status updated: "+lbl.lbl);
+  }
+
+  var ds=viewDate.toISOString().slice(0,10);
+  var hh=String(nowTime.getHours()).padStart(2,"0");
+  var mm2=String(nowTime.getMinutes()).padStart(2,"0");
+
+  var NAV=[
+    {ico:"⊞",lbl:"Dashboard",     href:"vets-reception.html"},
+    {ico:"📅",lbl:"Calendar",     href:"vets-calendar.html", active:true},
+    {ico:"🔍",lbl:"Client File",  href:"vets-client-file_8.html"},
+    {ico:"⚙️",lbl:"Settings"},
+  ];
+
+  return(
+    <div style={{width:"100%",height:"100%",display:"flex",overflow:"hidden",background:"#BDC9DC",...out}} onClick={function(){setStaffOpen(false);}}>
+
+      {/* ── SIDEBAR ───────────────────────────────────────── */}
+      <aside style={{background:C.sb,display:"flex",flexDirection:"column",flexShrink:0,position:"relative",overflow:"hidden",width:sideCollapsed?58:210,transition:"width 0.22s ease"}}>
+        <div style={{position:"absolute",inset:0,background:"radial-gradient(ellipse at 20% 10%,rgba(37,99,168,0.12) 0%,transparent 55%)",pointerEvents:"none"}}/>
+        {/* Logo */}
+        <div style={{height:54,padding:"0 16px",display:"flex",alignItems:"center",gap:10,borderBottom:"1px solid rgba(255,255,255,0.07)",flexShrink:0,justifyContent:sideCollapsed?"center":"flex-start",overflow:"hidden"}}>
+          <div style={{width:30,height:30,borderRadius:8,flexShrink:0,background:"linear-gradient(135deg,#2563A8,#1a4a8a)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>🐾</div>
+          {!sideCollapsed&&(
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:"#fff",letterSpacing:"0.05em",...sora}}>VETS</div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:"0.1em",...mono}}>CALENDAR</div>
+            </div>
+          )}
+        </div>
+        {/* Staff switcher */}
+        <div style={{position:"relative",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+          <button onClick={function(e){e.stopPropagation();setStaffOpen(function(o){return !o;});}}
+            style={{width:"100%",padding:sideCollapsed?"10px 0":"11px 16px",display:"flex",alignItems:"center",gap:9,justifyContent:sideCollapsed?"center":"flex-start",background:"transparent",border:"none",cursor:"pointer"}}>
+            <div style={{width:32,height:32,borderRadius:"50%",flexShrink:0,background:"linear-gradient(135deg,#2563A8,#3B82C4)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",...out}}>{activeStaff.initials}</div>
+            {!sideCollapsed&&(
+              <>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.9)",...sora}}>{activeStaff.name}</div>
+                  <div style={{fontSize:10,color:"rgba(255,255,255,0.32)"}}>{activeStaff.role}</div>
+                </div>
+                <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",transform:staffOpen?"rotate(180deg)":"none",display:"inline-block",transition:"transform 0.2s"}}>▼</span>
+              </>
+            )}
+          </button>
+          {staffOpen&&(
+            <div style={{background:"#0a1929",border:"1px solid rgba(255,255,255,0.08)",borderRadius:10,margin:"0 8px 8px",overflow:"hidden"}} onClick={function(e){e.stopPropagation();}}>
+              {STAFF.filter(function(s){return s.id!==activeStaff.id;}).map(function(s){return(
+                <button key={s.id} onClick={function(){setActiveStaff(s);setStaffOpen(false);}} className="sb-btn"
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"transparent",border:"none",cursor:"pointer",textAlign:"left",...out}}>
+                  <div style={{width:26,height:26,borderRadius:"50%",background:s.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:"#fff",flexShrink:0,...out}}>{s.initials}</div>
+                  <div>
+                    <div style={{fontSize:12,color:"rgba(255,255,255,0.8)",...out}}>{s.name}</div>
+                    <div style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>{s.role}</div>
+                  </div>
+                </button>
+              );})}
+            </div>
+          )}
+        </div>
+        {/* Nav */}
+        <nav style={{padding:"10px 8px",flex:1,display:"flex",flexDirection:"column",gap:2}}>
+          {NAV.map(function(item){
+            var on=item.active;
+            return(
+              <a key={item.lbl} href={item.href||"#"} className={on?"":"sb-btn"}
+                title={sideCollapsed?item.lbl:""}
+                style={{display:"flex",alignItems:"center",gap:9,padding:sideCollapsed?"9px 0":"9px 11px",borderRadius:8,justifyContent:sideCollapsed?"center":"flex-start",fontSize:12,fontWeight:on?600:400,border:"none",width:"100%",textAlign:"left",position:"relative",transition:"all 0.15s",...out,textDecoration:"none",background:on?C.sbA:"transparent",color:on?"#fff":"rgba(255,255,255,0.5)"}}>
+                {on&&<div style={{position:"absolute",left:0,top:7,bottom:7,width:3,background:C.aLt,borderRadius:"0 3px 3px 0"}}/>}
+                <span style={{width:17,textAlign:"center",fontSize:13,flexShrink:0}}>{item.ico}</span>
+                {!sideCollapsed&&item.lbl}
+              </a>
+            );
+          })}
+          {/* Vet visibility toggles */}
+          {!sideCollapsed&&(
+            <div id="cal-tour-vets" style={{marginTop:12,padding:"10px 11px",background:"rgba(255,255,255,0.04)",borderRadius:10}}>
+              <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,...mono}}>Visible Vets</div>
+              {ALL_VETS.map(function(v){
+                var on=visibleVetIds.indexOf(v.id)>-1;
+                return(
+                  <button key={v.id} onClick={function(){toggleVet(v.id);}}
+                    style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"5px 0",background:"transparent",border:"none",cursor:"pointer",...out}}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:on?v.color:"rgba(255,255,255,0.15)",transition:"background 0.15s"}}/>
+                    <span style={{fontSize:11,color:on?"rgba(255,255,255,0.85)":"rgba(255,255,255,0.3)",fontWeight:on?600:400}}>{v.name}</span>
+                    {on&&<span style={{marginLeft:"auto",fontSize:9,color:v.color,...mono}}>✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </nav>
+        <div style={{padding:"8px 8px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+          <button className="sb-btn" title={sideCollapsed?"▶ Start Demo":""} onClick={function(){setShowDemo(true);}}
+            style={{display:"flex",alignItems:"center",gap:9,padding:sideCollapsed?"9px 0":"9px 11px",borderRadius:8,fontSize:12,cursor:"pointer",border:"1px solid rgba(99,179,237,0.25)",justifyContent:sideCollapsed?"center":"flex-start",width:"100%",marginBottom:4,...out,background:"rgba(99,179,237,0.08)",color:"rgba(147,210,255,0.9)"}}>
+            <span style={{width:17,textAlign:"center",flexShrink:0,fontSize:13}}>▶</span>
+            {!sideCollapsed&&"Start Demo"}
+          </button>
+          <button onClick={function(){try{localStorage.clear();}catch(e){}location.reload();}} title="Reset prototype to initial state"
+            style={{display:"flex",alignItems:"center",gap:9,padding:sideCollapsed?"9px 0":"9px 11px",borderRadius:8,fontSize:11,cursor:"pointer",border:"1px solid rgba(220,38,38,0.25)",justifyContent:sideCollapsed?"center":"flex-start",width:"100%",marginBottom:4,...out,background:"rgba(220,38,38,0.08)",color:"rgba(252,165,165,0.9)"}}>
+            <span style={{width:17,textAlign:"center",flexShrink:0,fontSize:13}}>🔄</span>
+            {!sideCollapsed&&"Reset Demo"}
+          </button>
+          <button className="sb-btn" onClick={function(){window.location.href="vets-login.html";}} style={{display:"flex",alignItems:"center",gap:9,padding:sideCollapsed?"9px 0":"9px 11px",borderRadius:8,fontSize:12,cursor:"pointer",border:"none",justifyContent:sideCollapsed?"center":"flex-start",width:"100%",...out,background:"transparent",color:"rgba(255,255,255,0.28)"}}>
+            <span style={{width:17,textAlign:"center",flexShrink:0}}>↩</span>
+            {!sideCollapsed&&"Sign Out"}
+          </button>
+        </div>
+      </aside>
+
+      {/* Collapse handle */}
+      <div style={{width:0,flexShrink:0,position:"relative",zIndex:30}}>
+        <button onClick={function(e){e.stopPropagation();setSideCollapsed(function(v){return !v;});}}
+          style={{position:"absolute",left:-13,top:"50%",transform:"translateY(-50%)",width:26,height:26,borderRadius:"50%",background:C.sb,border:"1px solid rgba(255,255,255,0.12)",boxShadow:"0 2px 10px rgba(0,0,0,0.22)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"rgba(255,255,255,0.75)",cursor:"pointer"}}>
+          {sideCollapsed?"›":"‹"}
+        </button>
+      </div>
+
+      {/* ── MAIN ─────────────────────────────────────────── */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+        {/* Top bar */}
+        <div style={{background:C.wh,display:"flex",alignItems:"center",padding:"0 20px",height:54,flexShrink:0,borderBottom:"1px solid "+C.br,gap:10}}>
+          {/* View tabs */}
+          <div id="cal-tour-viewtabs" style={{display:"flex",background:C.off,borderRadius:8,padding:3,gap:1}}>
+            {["day","week","month"].map(function(v){
+              var a=view===v;
+              return(
+                <button key={v} onClick={function(){setView(v);}} style={{padding:"5px 14px",borderRadius:6,background:a?C.wh:"transparent",color:a?C.tx:C.t3,fontSize:12,fontWeight:a?700:500,border:a?"1px solid "+C.br:"1px solid transparent",cursor:"pointer",textTransform:"capitalize",boxShadow:a?"0 1px 3px rgba(0,0,0,0.07)":"none",...out}}>
+                  {v.charAt(0).toUpperCase()+v.slice(1)}
+                </button>
+              );
+            })}
+          </div>
+          {/* Nav arrows */}
+          <div id="cal-tour-nav" style={{display:"flex",alignItems:"center",gap:5}}>
+            <button className="nav-btn" onClick={goPrev} style={{width:30,height:30,borderRadius:8,background:C.off,border:"1px solid "+C.br,color:C.t2,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.1s"}}>‹</button>
+            <button className="nav-btn" onClick={goToday} style={{padding:"5px 12px",borderRadius:8,background:C.off,border:"1px solid "+C.br,color:C.acc,fontSize:12,fontWeight:700,cursor:"pointer",...out,transition:"background 0.1s"}}>Today</button>
+            <button className="nav-btn" onClick={goNext} style={{width:30,height:30,borderRadius:8,background:C.off,border:"1px solid "+C.br,color:C.t2,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"background 0.1s"}}>›</button>
+          </div>
+          {/* Date label */}
+          <div style={{flex:1,fontSize:14,fontWeight:700,color:C.tx,...sora}}>{navLabel()}</div>
+          {/* Clock */}
+          <div style={{display:"flex",alignItems:"center",gap:2,background:C.sb,borderRadius:8,padding:"5px 12px"}}>
+            <span style={{fontSize:15,fontWeight:700,color:"#fff",...mono}}>{hh}</span>
+            <span style={{fontSize:15,fontWeight:700,color:"rgba(255,255,255,0.4)",animation:"pulse 1.5s infinite",...mono}}>:</span>
+            <span style={{fontSize:15,fontWeight:700,color:"#fff",...mono}}>{mm2}</span>
+          </div>
+          {/* + Appointment */}
+          <button id="cal-tour-new-appt" onClick={function(){handleAddAppt(null);}} style={{display:"flex",alignItems:"center",gap:6,padding:"7px 16px",background:C.acc,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 2px 8px rgba(37,99,168,0.3)",...out}}>
+            + New Appointment
+          </button>
+        </div>
+
+        {/* Calendar + right panel */}
+        <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+          <div id="cal-tour-grid" style={{flex:1,overflow:"hidden",background:"#E8EDF4"}}>
+            {view==="day"&&(
+              <DayView dateStr={ds} appts={appts} visibleVets={visibleVets} allVets={ALL_VETS} onToggleVet={toggleVet} onApptClick={setSelAppt} onAddSlot={function(vid,time){setAddDef({vet:vid,date:ds,time:time});setShowAdd(true);}} apptFilter={apptFilter} setApptFilter={setApptFilter}/>
+            )}
+            {view==="week"&&(
+              <WeekView weekDates={weekDates} appts={appts} visibleVets={visibleVets} onDayClick={function(d){setViewDate(d);setView("day");}} onApptClick={setSelAppt} onAddAppt={function(ds){setAddDef({date:ds});setShowAdd(true);}}/>
+            )}
+            {view==="month"&&(
+              <MonthView viewDate={viewDate} appts={appts} visibleVets={visibleVets} onDayClick={function(d){setViewDate(d);setView("day");}}/>
+            )}
+          </div>
+          <RightPanel viewDate={viewDate} view={view} appts={appts} visibleVets={visibleVets} onAddAppt={handleAddAppt} onApptClick={setSelAppt} lastClient={lastClient} initialClient={deepLinkClient}/>
+        </div>
+      </div>
+
+      {/* Toast */}
+      {toast&&(
+        <div style={{position:"fixed",bottom:28,left:"50%",transform:"translateX(-50%)",zIndex:900,background:C.sb,color:"#fff",borderRadius:10,padding:"11px 22px",fontSize:13,fontWeight:600,boxShadow:"0 4px 24px rgba(0,0,0,0.22)",display:"flex",alignItems:"center",gap:10,animation:"fadeIn 0.2s ease",...out,pointerEvents:"none"}}>
+          <span style={{color:C.gn,fontSize:16}}>✓</span>
+          {toast}
+        </div>
+      )}
+      {/* Modals */}
+      {selAppt&&<ApptDrawer appt={selAppt} onClose={function(){setSelAppt(null);}} onStatusChange={changeApptStatus}/>}
+      {showAdd&&<AddApptModal onClose={function(){setShowAdd(false);}} onSave={saveAppt} defaultDate={addDef.date} defaultVet={addDef.vet} defaultTime={addDef.time||""}
+        defaultClient={addDef.client||( addDef.clientName ? {name:addDef.clientName, pets:[addDef.petName||""],isNew:true} : null)}
+        newClientBadge={!!addDef.isNew}
+      />}
+      {showDemo&&<TooltipTourCalendar onDone={function(){setShowDemo(false);}}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

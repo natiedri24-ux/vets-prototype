@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VETS — System Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;overflow:hidden}
+body{font-family:'Outfit',sans-serif;background:#F4F6F9}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px}
+button{cursor:pointer;border:none;outline:none;font-family:'Outfit',sans-serif}
+input,select,textarea{font-family:'Outfit',sans-serif;outline:none}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.sb-btn:hover{background:rgba(255,255,255,0.08)!important;color:rgba(255,255,255,0.9)!important}
+.srow:hover{background:#F1F5F9!important}
+.srow-dark:hover{background:rgba(255,255,255,0.04)!important}
+.msg-row:hover{background:#F8FAFC!important}
+.cal-col:hover .cal-empty{background:rgba(37,99,168,0.03)!important}
+.appt-block:hover{filter:brightness(1.07);transform:translateX(1px)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ═══ SCRIPT 1 · Shared data · colors · helpers · mini-components ═══ -->
+<script type="text/babel">
+const {useState,useRef,useEffect,useMemo}=React;
+
+const C_REC={
+  sb:"#0D1F35",sbA:"#1C3252",acc:"#2563A8",aLt:"#3B82C4",
+  off:"#F4F6F9",br:"#E2E7EF",wh:"#FFFFFF",
+  tx:"#0F172A",t2:"#475569",t3:"#94A3B8",
+  er:"#DC2626",rBg:"#FEF2F2",rBr:"#FECACA",
+  am:"#D97706",aBg:"#FFFBEB",aBr:"#FDE68A",
+  gn:"#059669",gBg:"#F0FDF4",gBr:"#BBF7D0",pu:"#7C3AED",
+};
+const C_VET={
+  sb:"#0C2420",sbA:"#163830",acc:"#0D9488",aLt:"#2DD4BF",
+  off:"#F4F6F9",br:"#E2E7EF",wh:"#FFFFFF",
+  tx:"#0F172A",t2:"#475569",t3:"#94A3B8",
+  er:"#DC2626",rBg:"#FEF2F2",rBr:"#FECACA",
+  am:"#D97706",aBg:"#FFFBEB",aBr:"#FDE68A",
+  gn:"#059669",gBg:"#F0FDF4",gBr:"#BBF7D0",pu:"#7C3AED",
+};
+const C_CAL={
+  sb:"#1E1B4B",sbA:"#2E2A6A",acc:"#7C3AED",aLt:"#A78BFA",
+  off:"#F4F6F9",br:"#E2E7EF",wh:"#FFFFFF",
+  tx:"#0F172A",t2:"#475569",t3:"#94A3B8",
+  er:"#DC2626",rBg:"#FEF2F2",rBr:"#FECACA",
+  am:"#D97706",aBg:"#FFFBEB",aBr:"#FDE68A",
+  gn:"#059669",gBg:"#F0FDF4",gBr:"#BBF7D0",pu:"#7C3AED",
+};
+
+const VETS=[
+  {id:1,name:"Dr. Inbar Levi",  initials:"IL",role:"Veterinarian",color:"#2563A8"},
+  {id:2,name:"Dr. Yael Cohen",  initials:"YC",role:"Veterinarian",color:"#059669"},
+  {id:3,name:"Dr. Oren Shapiro",initials:"OS",role:"Veterinarian",color:"#7C3AED"},
+];
+const STAFF=[
+  {id:1,name:"Maya Cohen",  initials:"MC",role:"Receptionist",color:"#2563A8"},
+  {id:2,name:"Tal Mizrahi", initials:"TM",role:"Receptionist",color:"#059669"},
+  {id:3,name:"Shira Levi",  initials:"SL",role:"Receptionist",color:"#7C3AED"},
+];
+const CLIENTS_DB=[
+  {id:"C-001",name:"Jennifer Hartman",phone:"(617) 555-0192",email:"j.hartman@email.com",
+   pets:[
+     {id:"P-001",name:"Snoopy",icon:"🐶",breed:"Border Collie",age:"8Y",gender:"Male",
+      chip:"0188827000018",alerts:["Penicillin allergy","High bite risk"],inClinic:true},
+     {id:"P-002",name:"Luna",icon:"🐱",breed:"Siamese Cat",age:"5Y",gender:"Female",
+      chip:"0188827000201",alerts:["Anxious"],inClinic:false},
+   ]},
+  {id:"C-002",name:"Tom Katz",phone:"052-123-4567",email:"tom@example.com",
+   pets:[{id:"P-010",name:"Whiskers",icon:"🐱",breed:"Persian Cat",age:"4Y",gender:"Male",
+          chip:"0177712000055",alerts:[],inClinic:false}]},
+  {id:"C-003",name:"Sarah Miller",phone:"054-987-6543",email:"sarah@example.com",
+   pets:[{id:"P-020",name:"Buddy",icon:"🐶",breed:"Golden Retriever",age:"2Y",gender:"Male",
+          chip:"0166600000013",alerts:[],inClinic:false}]},
+  {id:"C-004",name:"Ronen Ben-David",phone:"050-333-2211",email:"ronen@example.com",
+   pets:[{id:"P-030",name:"Momo",icon:"🐶",breed:"French Bulldog",age:"1.5Y",gender:"Male",
+          chip:"0155500000077",alerts:["Anxious"],inClinic:false}]},
+  {id:"C-005",name:"Noa Shapiro",phone:"053-777-8899",email:"noa@example.com",
+   pets:[{id:"P-040",name:"Luna",icon:"🐱",breed:"Siamese Cat",age:"3Y",gender:"Female",
+          chip:"0144400000031",alerts:["Asthma — avoid stress"],inClinic:false}]},
+  {id:"C-006",name:"Michal Goldberg",phone:"054-200-1234",email:"michal@example.com",
+   pets:[{id:"P-050",name:"Noodle",icon:"🐶",breed:"Poodle",age:"3Y",gender:"Female",
+          chip:"0133300000055",alerts:["Anxious — pre-medicate"],inClinic:false}]},
+];
+const SCHED=[
+  {time:"08:30",dur:20,clientId:"C-003",client:"Dana Levy",pet:"Cookie",breed:"Maltese",type:"Vaccination",color:"#059669",status:"done",alerts:[],postVisit:"discharged"},
+  {time:"09:00",dur:45,clientId:"C-003",client:"Sarah Miller",pet:"Buddy",breed:"Golden Retriever",type:"Medical Exam",color:"#2563A8",status:"done",alerts:[],postVisit:"discharged"},
+  {time:"09:50",dur:30,clientId:"C-004",client:"Yossi Peretz",pet:"Ginger",breed:"Beagle",type:"Follow-up",color:"#C94040",status:"done",alerts:[],postVisit:"at-reception",delay:12},
+  {time:"10:30",dur:20,clientId:"C-002",client:"Tom Katz",pet:"Whiskers",breed:"Persian Cat",type:"Vaccination",color:"#059669",status:"done",alerts:[],postVisit:null,delay:8},
+  {time:"11:00",dur:30,clientId:"C-006",client:"Michal Goldberg",pet:"Noodle",breed:"Poodle",type:"Blood Test",color:"#DC2626",status:"done",alerts:["Anxious — pre-medicate"],postVisit:"discharged"},
+  {time:"11:30",dur:40,clientId:"C-001",client:"Jennifer Hartman",pet:"Snoopy",breed:"Border Collie",type:"Blood Test",color:"#DC2626",status:"now",alerts:["Penicillin allergy","High bite risk"],delay:18},
+  {time:"13:00",dur:30,clientId:"C-004",client:"Ronen Ben-David",pet:"Momo",breed:"French Bulldog",type:"Follow-up",color:"#C94040",status:"next",alerts:[]},
+  {time:"13:45",dur:45,clientId:null,client:"Hila Koren",pet:"Simba",breed:"Maine Coon",type:"Dental Cleaning",color:"#7C3AED",status:"upcoming",alerts:[]},
+  {time:"14:30",dur:60,clientId:"C-005",client:"Noa Shapiro",pet:"Luna",breed:"Siamese Cat",type:"Procedure",color:"#D97706",status:"upcoming",alerts:["Asthma — avoid stress"]},
+  {time:"15:30",dur:20,clientId:null,client:"Benny Dahan",pet:"Koko",breed:"Lovebird",type:"Checkup",color:"#059669",status:"upcoming",alerts:[]},
+  {time:"16:00",dur:30,clientId:null,client:"Avi Cohen",pet:"Rex",breed:"German Shepherd",type:"Vaccination",color:"#059669",status:"upcoming",alerts:[]},
+  {time:"16:45",dur:30,clientId:null,client:"Liora Mizrahi",pet:"Shadow",breed:"Black Labrador",type:"X-Ray",color:"#2563A8",status:"upcoming",alerts:["Sedation required"]},
+];
+const MSGS_REC=[
+  {id:1,tag:"URGENT",tc:"#DC2626",tb:"#FEF2F2",tbr:"#FECACA",sender:"Dr. Cohen",time:"11:18",unread:true,
+   body:"Jennifer Hartman arrived early. CBC approval needed before pre-surgery prep."},
+  {id:2,tag:"UPDATE",tc:"#059669",tb:"#F0FDF4",tbr:"#BBF7D0",sender:"Assist. 1",time:"10:45",unread:true,
+   body:"Momo's blood results are in. All values within normal range."},
+  {id:3,tag:"QUESTION",tc:"#2563A8",tb:"rgba(37,99,168,0.07)",tbr:"rgba(37,99,168,0.2)",sender:"Dr. Cohen",time:"09:30",unread:false,
+   body:"Can we reschedule Noa Shapiro from 14:30 to 15:30?"},
+  {id:4,tag:"URGENT",tc:"#DC2626",tb:"#FEF2F2",tbr:"#FECACA",sender:"Assist. 2",time:"09:05",unread:false,
+   body:"Inventory alert — Metacam running low, reorder needed ASAP."},
+];
+const MSGS_VET=[
+  {id:1,tag:"URGENT",tc:"#DC2626",tb:"#FEF2F2",tbr:"#FECACA",sender:"Reception",time:"11:18",unread:true,
+   body:"Jennifer Hartman arrived early. Please confirm room is ready for Snoopy."},
+  {id:2,tag:"CONSULT",tc:"#7C3AED",tb:"rgba(124,58,237,0.08)",tbr:"rgba(124,58,237,0.2)",sender:"Dr. Cohen",time:"10:45",unread:true,
+   body:"Quick question on Momo's dosage — can we go 5mg/kg for the anti-inflammatory?"},
+  {id:3,tag:"LAB",tc:"#059669",tb:"#F0FDF4",tbr:"#BBF7D0",sender:"Lab",time:"10:20",unread:false,
+   body:"Snoopy's CBC results uploaded. All panels complete — ready for review."},
+];
+
+const WEEK_DAYS=["Mon","Tue","Wed","Thu","Fri"];
+const WEEK_DATES=["22","23","24","25","26"];
+const WEEK_SCHED={
+  "Mon":[
+    {id:"W01",start:"09:00",dur:45,clientId:"C-003",client:"Sarah Miller",pet:"Buddy",type:"Medical Exam",color:"#2563A8",vet:"Dr. Levi",status:"done"},
+    {id:"W02",start:"10:30",dur:20,clientId:"C-002",client:"Tom Katz",pet:"Whiskers",type:"Vaccination",color:"#059669",vet:"Dr. Levi",status:"done"},
+    {id:"W03",start:"11:30",dur:40,clientId:"C-001",client:"Jennifer Hartman",pet:"Snoopy",type:"Blood Test",color:"#DC2626",vet:"Dr. Cohen",status:"now",alerts:["Penicillin allergy"]},
+    {id:"W04",start:"13:00",dur:30,clientId:"C-004",client:"Ronen Ben-David",pet:"Momo",type:"Follow-up",color:"#C94040",vet:"Dr. Levi",status:"upcoming"},
+    {id:"W05",start:"14:30",dur:60,clientId:"C-005",client:"Noa Shapiro",pet:"Luna",type:"Procedure",color:"#D97706",vet:"Dr. Cohen",status:"upcoming",alerts:["Asthma"]},
+    {id:"W06",start:"16:00",dur:30,clientId:null,client:"Avi Cohen",pet:"Rex",type:"Vaccination",color:"#059669",vet:"Dr. Shapiro",status:"upcoming"},
+  ],
+  "Tue":[
+    {id:"W10",start:"09:00",dur:30,clientId:null,client:"Dana Levy",pet:"Cookie",type:"Vaccination",color:"#059669",vet:"Dr. Shapiro",status:"upcoming"},
+    {id:"W11",start:"11:00",dur:60,clientId:null,client:"Hila Koren",pet:"Simba",type:"Dental",color:"#7C3AED",vet:"Dr. Cohen",status:"upcoming"},
+    {id:"W12",start:"13:30",dur:30,clientId:null,client:"Liora Mizrahi",pet:"Shadow",type:"X-Ray",color:"#2563A8",vet:"Dr. Shapiro",status:"upcoming"},
+    {id:"W13",start:"15:00",dur:45,clientId:"C-003",client:"Sarah Miller",pet:"Buddy",type:"Follow-up",color:"#2563A8",vet:"Dr. Levi",status:"upcoming"},
+  ],
+  "Wed":[
+    {id:"W20",start:"09:00",dur:30,clientId:"C-002",client:"Tom Katz",pet:"Whiskers",type:"Follow-up",color:"#2563A8",vet:"Dr. Cohen",status:"upcoming"},
+    {id:"W21",start:"10:30",dur:20,clientId:"C-001",client:"Jennifer Hartman",pet:"Luna",type:"Vaccination",color:"#059669",vet:"Dr. Levi",status:"upcoming"},
+    {id:"W22",start:"13:00",dur:60,clientId:"C-005",client:"Noa Shapiro",pet:"Luna",type:"Post-op Check",color:"#D97706",vet:"Dr. Cohen",status:"upcoming"},
+    {id:"W23",start:"15:00",dur:30,clientId:"C-004",client:"Ronen Ben-David",pet:"Momo",type:"Vaccination",color:"#059669",vet:"Dr. Shapiro",status:"upcoming"},
+  ],
+  "Thu":[
+    {id:"W30",start:"08:30",dur:45,clientId:"C-003",client:"Sarah Miller",pet:"Buddy",type:"Blood Test",color:"#DC2626",vet:"Dr. Cohen",status:"upcoming"},
+    {id:"W31",start:"10:30",dur:30,clientId:null,client:"Avi Cohen",pet:"Rex",type:"Checkup",color:"#059669",vet:"Dr. Shapiro",status:"upcoming"},
+    {id:"W32",start:"14:30",dur:60,clientId:"C-001",client:"Jennifer Hartman",pet:"Snoopy",type:"Annual Exam",color:"#2563A8",vet:"Dr. Cohen",status:"upcoming"},
+    {id:"W33",start:"16:00",dur:30,clientId:null,client:"Hila Koren",pet:"Simba",type:"Follow-up",color:"#7C3AED",vet:"Dr. Levi",status:"upcoming"},
+  ],
+  "Fri":[
+    {id:"W40",start:"09:00",dur:20,clientId:null,client:"Benny Dahan",pet:"Koko",type:"Checkup",color:"#059669",vet:"Dr. Levi",status:"upcoming"},
+    {id:"W41",start:"10:00",dur:45,clientId:null,client:"Liora Mizrahi",pet:"Shadow",type:"Procedure",color:"#D97706",vet:"Dr. Cohen",status:"upcoming"},
+    {id:"W42",start:"12:00",dur:30,clientId:"C-002",client:"Tom Katz",pet:"Whiskers",type:"Dental",color:"#7C3AED",vet:"Dr. Shapiro",status:"upcoming"},
+    {id:"W43",start:"14:00",dur:30,clientId:"C-006",client:"Michal Goldberg",pet:"Noodle",type:"Vaccination",color:"#059669",vet:"Dr. Levi",status:"upcoming"},
+  ],
+};
+
+function timeToMin(t){var p=t.split(":");return parseInt(p[0])*60+parseInt(p[1]);}
+function minToTime(m){var h=Math.floor(m/60);var mm=m%60;return (h<10?"0"+h:h)+":"+(mm<10?"0"+mm:mm);}
+function initials(name){return name.split(" ").map(function(n){return n[0];}).join("");}
+
+function Dot({color,size,pulse}){
+  size=size||6;
+  return <div style={{width:size,height:size,borderRadius:"50%",background:color,
+    flexShrink:0,animation:pulse?"blink 2s infinite":"none"}}/>;
+}
+function HubToast({msg,onHide}){
+  useEffect(function(){var t=setTimeout(onHide,2800);return function(){clearTimeout(t);};},[]);
+  return(
+    <div style={{position:"fixed",top:18,left:"50%",transform:"translateX(-50%)",
+      zIndex:3000,background:"#052e16",color:"#4ade80",fontSize:13,fontWeight:500,
+      padding:"11px 22px",borderRadius:10,boxShadow:"0 8px 30px rgba(0,0,0,0.22)",
+      border:"1px solid rgba(74,222,128,0.2)",display:"flex",alignItems:"center",gap:9,
+      animation:"slideUp 0.2s ease",fontFamily:"'Outfit',sans-serif"}}>
+      ✓ {msg}
+    </div>
+  );
+}
+function PinModal({pending,onSuccess,onCancel}){
+  var _s=useState("");var pin=_s[0];var setPin=_s[1];
+  var _e=useState(false);var err=_e[0];var setErr=_e[1];
+  function press(d){
+    if(pin.length>=4)return;
+    var next=pin+d;setPin(next);
+    if(next.length===4){
+      if(next==="1234"){onSuccess(pending);setPin("");}
+      else{setErr(true);setTimeout(function(){setPin("");setErr(false);},700);}
+    }
+  }
+  var btnSt={padding:"13px",borderRadius:9,border:"1px solid #E2E7EF",background:"#F4F6F9",
+    fontSize:17,fontWeight:500,cursor:"pointer",color:"#0F172A",fontFamily:"'Outfit',sans-serif"};
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:2000,background:"rgba(0,0,0,0.5)",
+      display:"flex",alignItems:"center",justifyContent:"center",animation:"fadeIn 0.15s"}}
+      onClick={onCancel}>
+      <div style={{background:"#fff",borderRadius:16,padding:"28px 32px",width:296,
+        boxShadow:"0 24px 60px rgba(0,0,0,0.22)",fontFamily:"'Outfit',sans-serif"}}
+        onClick={function(e){e.stopPropagation();}}>
+        <div style={{textAlign:"center",marginBottom:22}}>
+          <div style={{width:46,height:46,borderRadius:"50%",background:pending&&pending.color,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:15,fontWeight:700,color:"#fff",margin:"0 auto 10px"}}>
+            {pending&&pending.initials}</div>
+          <div style={{fontSize:15,fontWeight:600,color:"#0F172A",fontFamily:"'Sora',sans-serif"}}>{pending&&pending.name}</div>
+          <div style={{fontSize:11,color:"#94A3B8",marginTop:3}}>Enter PIN to switch</div>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:4}}>
+          {[0,1,2,3].map(function(i){return(
+            <div key={i} style={{width:13,height:13,borderRadius:"50%",transition:"background 0.15s",
+              background:i<pin.length?"#2563A8":"#E5E9F0"}}/>
+          );})}
+        </div>
+        {err?<div style={{fontSize:11,color:"#DC2626",textAlign:"center",margin:"10px 0"}}>Incorrect PIN</div>
+            :<div style={{height:28}}/>}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+          {[1,2,3,4,5,6,7,8,9].map(function(n){return(
+            <button key={n} onClick={function(){press(String(n));}} style={btnSt}
+              onMouseEnter={function(e){e.currentTarget.style.background="#EEF1F6";}}
+              onMouseLeave={function(e){e.currentTarget.style.background="#F4F6F9";}}>{n}</button>
+          );})}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+          <button onClick={onCancel} style={Object.assign({},btnSt,{fontSize:12,color:"#475569"})}>Cancel</button>
+          <button onClick={function(){press("0");}} style={btnSt}>0</button>
+          <button onClick={function(){setPin(function(p){return p.slice(0,-1);});}} style={Object.assign({},btnSt,{fontSize:15,color:"#475569"})}>⌫</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Sidebar({C,role,logo,nav,activeNav,onNav,user,users,onUserSwitch,moreItems,onSignOut,onStartDemo}){
+  var _o=useState(false);var open=_o[0];var setOpen=_o[1];
+  var _m=useState(false);var more=_m[0];var setMore=_m[1];
+  var _pen=useState(null);var pending=_pen[0];var setPending=_pen[1];
+  var _pin=useState(false);var showPin=_pin[0];var setShowPin=_pin[1];
+  return(
+    <aside id="hub-tour-sidebar-nav" style={{width:216,background:C.sb,display:"flex",flexDirection:"column",
+      flexShrink:0,position:"relative",overflow:"hidden",zIndex:10}}
+      onClick={function(e){e.stopPropagation();}}>
+      <div style={{position:"absolute",inset:0,
+        background:"radial-gradient(ellipse at 20% 10%,rgba(255,255,255,0.04) 0%,transparent 55%)",
+        pointerEvents:"none"}}/>
+      {/* Logo */}
+      <div style={{height:58,padding:"0 20px",display:"flex",alignItems:"center",gap:11,
+        borderBottom:"1px solid rgba(255,255,255,0.07)",flexShrink:0}}>
+        <div style={{width:32,height:32,borderRadius:8,
+          background:"linear-gradient(135deg,"+C.acc+","+C.sb+")",
+          display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🐾</div>
+        <div>
+          <div style={{fontSize:15,fontWeight:700,color:"#fff",letterSpacing:"0.05em",fontFamily:"'Sora',sans-serif"}}>VETS</div>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:"0.1em",fontFamily:"'DM Mono',monospace",marginTop:1}}>{role}</div>
+        </div>
+      </div>
+      {/* User switcher */}
+      <div style={{position:"relative",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+        <button className="sb-btn" onClick={function(){setOpen(function(o){return !o;});}}
+          style={{width:"100%",padding:"12px 20px",display:"flex",alignItems:"center",gap:10,
+            background:"transparent",border:"none",cursor:"pointer",textAlign:"left"}}>
+          <div style={{width:34,height:34,borderRadius:"50%",background:user.color,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>{user.initials}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.92)",fontFamily:"'Sora',sans-serif",
+              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{user.name}</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.32)",marginTop:1}}>{user.role}</div>
+          </div>
+          <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",display:"inline-block",
+            transition:"transform 0.2s",transform:open?"rotate(180deg)":"none"}}>▼</span>
+        </button>
+        {open&&(
+          <div style={{background:"rgba(0,0,0,0.25)",border:"1px solid rgba(255,255,255,0.08)",
+            borderRadius:10,margin:"0 8px 8px",overflow:"hidden"}}>
+            <div style={{fontSize:9,fontWeight:600,color:"rgba(255,255,255,0.22)",letterSpacing:"0.1em",
+              textTransform:"uppercase",fontFamily:"'DM Mono',monospace",padding:"8px 12px 4px"}}>Switch User</div>
+            {users.filter(function(s){return s.id!==user.id;}).map(function(s){return(
+              <button key={s.id} className="sb-btn"
+                onClick={function(){setPending(s);setOpen(false);setShowPin(true);}}
+                style={{width:"100%",display:"flex",alignItems:"center",gap:9,padding:"8px 12px",
+                  background:"transparent",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"'Outfit',sans-serif"}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:s.color,
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:11,fontWeight:600,color:"#fff",flexShrink:0}}>{s.initials}</div>
+                <div>
+                  <div style={{fontSize:11.5,color:"rgba(255,255,255,0.8)",fontFamily:"'Outfit',sans-serif"}}>{s.name}</div>
+                  <div style={{fontSize:10,color:"rgba(255,255,255,0.3)"}}>{s.role}</div>
+                </div>
+              </button>
+            );})}
+          </div>
+        )}
+      </div>
+      {/* Nav */}
+      <nav style={{padding:"10px 8px",flex:1,display:"flex",flexDirection:"column",gap:2,overflowY:"auto"}}>
+        {nav.map(function(item){
+          var on=activeNav===item.id;
+          return(
+            <button key={item.id} className="sb-btn"
+              onClick={function(){onNav(item.id);}}
+              style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,
+                fontSize:12,fontWeight:on?600:400,cursor:"pointer",border:"none",width:"100%",
+                textAlign:"left",position:"relative",transition:"all 0.15s",fontFamily:"'Outfit',sans-serif",
+                background:on?C.sbA:"transparent",color:on?"#fff":"rgba(255,255,255,0.48)"}}>
+              {on&&<div style={{position:"absolute",left:0,top:7,bottom:7,width:3,
+                background:C.aLt,borderRadius:"0 3px 3px 0"}}/>}
+              <span style={{width:17,textAlign:"center",fontSize:14,flexShrink:0}}>{item.ico}</span>
+              {item.lbl}
+              {item.badge>0&&<span style={{marginLeft:"auto",background:C.er,color:"#fff",
+                fontSize:9.5,fontWeight:700,padding:"1px 6px",borderRadius:9,fontFamily:"'DM Mono',monospace"}}>{item.badge}</span>}
+            </button>
+          );
+        })}
+        {moreItems&&(
+          <div style={{marginTop:5,position:"relative"}}>
+            <button className="sb-btn" onClick={function(){setMore(function(o){return !o;});}}
+              style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,
+                fontSize:12,cursor:"pointer",border:"none",width:"100%",fontFamily:"'Outfit',sans-serif",
+                background:"transparent",color:"rgba(255,255,255,0.48)"}}>
+              <span style={{width:17,textAlign:"center",fontSize:10}}>•••</span>More
+              <span style={{marginLeft:"auto",fontSize:9,color:"rgba(255,255,255,0.2)",display:"inline-block",
+                transition:"transform 0.2s",transform:more?"rotate(180deg)":"none"}}>▼</span>
+            </button>
+            {more&&(
+              <div style={{background:"rgba(0,0,0,0.3)",border:"1px solid rgba(255,255,255,0.08)",
+                borderRadius:10,marginTop:3,overflow:"hidden",maxHeight:240,overflowY:"auto"}}>
+                {Object.entries(moreItems).map(function(entry){
+                  var sec=entry[0];var items=entry[1];
+                  return(
+                    <div key={sec}>
+                      <div style={{fontSize:9,fontWeight:600,color:"rgba(255,255,255,0.22)",letterSpacing:"0.12em",
+                        textTransform:"uppercase",fontFamily:"'DM Mono',monospace",padding:"8px 12px 3px"}}>{sec}</div>
+                      {items.map(function(it){return(
+                        <div key={it} style={{padding:"7px 13px",fontSize:11,color:"rgba(255,255,255,0.46)",cursor:"pointer"}}>{it}</div>
+                      );})}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </nav>
+      <div style={{padding:"10px 8px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+        {onStartDemo&&(
+          <button className="sb-btn" onClick={onStartDemo} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",
+            borderRadius:8,fontSize:12,cursor:"pointer",border:"1px solid rgba(99,179,237,0.25)",width:"100%",fontFamily:"'Outfit',sans-serif",
+            background:"rgba(99,179,237,0.08)",color:"rgba(147,210,255,0.9)",marginBottom:4}}>
+            <span style={{width:17,textAlign:"center",fontSize:13}}>▶</span>Start Demo
+          </button>
+        )}
+        <button className="sb-btn" onClick={function(){window.location.href="vets-login.html";}} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",
+          borderRadius:8,fontSize:12,cursor:"pointer",border:"none",width:"100%",fontFamily:"'Outfit',sans-serif",
+          background:"transparent",color:"rgba(255,255,255,0.28)"}}>
+          <span style={{width:17,textAlign:"center"}}>↩</span>Sign Out
+        </button>
+      </div>
+      {showPin&&<PinModal pending={pending}
+        onSuccess={function(s){onUserSwitch(s);setShowPin(false);}}
+        onCancel={function(){setShowPin(false);}}/>}
+    </aside>
+  );
+}
+</script>
+
+<!-- ═══ SCRIPT 2 · Reception View ═══ -->
+<script type="text/babel">
+function ReceptionView({onNavigate,activeStaff,onStaffSwitch,toast,showToast,onStartDemo}){
+  var _nav=useState("dashboard");var navId=_nav[0];var setNavId=_nav[1];
+  var _panel=useState("schedule");var panel=_panel[0];var setPanel=_panel[1];
+  var _petI=useState(0);var petI=_petI[0];var setPetI=_petI[1];
+  var _srQ=useState("");var srQ=_srQ[0];var setSrQ=_srQ[1];
+  var _srRes=useState(null);var srRes=_srRes[0];var setSrRes=_srRes[1];
+  var _replyTo=useState(null);var replyTo=_replyTo[0];var setReplyTo=_replyTo[1];
+  var _replyTxt=useState("");var replyTxt=_replyTxt[0];var setReplyTxt=_replyTxt[1];
+  var _compose=useState(false);var composing=_compose[0];var setComposing=_compose[1];
+
+  var C=C_REC;
+  var doneCount=SCHED.filter(function(s){return s.status==="done";}).length;
+  var remainCount=SCHED.filter(function(s){return s.status!=="done";}).length;
+  var unread=MSGS_REC.filter(function(m){return m.unread;}).length;
+
+  function openClientFile(clientId){
+    if(clientId){
+      try{sessionStorage.setItem("vets_clientId",clientId);}catch(e){}
+    }
+    window.location.href="vets-client-file_8.html";
+  }
+
+  function liveSearch(q){
+    setSrQ(q);
+    if(!q.trim()){setSrRes(null);return;}
+    var r=CLIENTS_DB.filter(function(c){
+      return c.name.toLowerCase().includes(q.toLowerCase())||
+             c.phone.replace(/-/g,"").includes(q.replace(/-/g,""))||
+             c.pets.some(function(p){return p.name.toLowerCase().includes(q.toLowerCase());});
+    });
+    setSrRes(r);
+  }
+
+  var NOW=SCHED.find(function(s){return s.status==="now";});
+
+  var NAV=[
+    {id:"dashboard",ico:"⊞",lbl:"Dashboard"},
+    {id:"calendar",ico:"📅",lbl:"Calendar",onClick:function(){onNavigate("calendar");}},
+    {id:"vetroom",ico:"🩺",lbl:"Vet Room",onClick:function(){onNavigate("vetroom");}},
+    {id:"messages",ico:"✉",lbl:"Messages",badge:unread},
+    {id:"settings",ico:"⚙",lbl:"Settings"},
+  ];
+  var MORE_ITEMS={
+    Business:["📊 Reports & Analytics","💰 Financial Management","📦 Inventory"],
+    Team:["👥 Human Resources","🔐 Staff Management"],
+    System:["⚙️ Preferences","📄 Templates"],
+  };
+
+  return(
+    <div style={{display:"flex",height:"100vh",overflow:"hidden",background:C.off}}>
+      <Sidebar C={C} role="RECEPTION" nav={NAV} activeNav={navId}
+        onNav={function(id){
+          var item=NAV.find(function(n){return n.id===id;});
+          if(item&&item.onClick){item.onClick();return;}
+          setNavId(id);
+        }}
+        user={activeStaff} users={STAFF} onUserSwitch={onStaffSwitch}
+        moreItems={MORE_ITEMS} onStartDemo={onStartDemo}/>
+
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+        {/* Topbar */}
+        <div id="hub-tour-topbar" style={{height:58,background:C.wh,borderBottom:"1px solid "+C.br,display:"flex",
+          alignItems:"center",padding:"0 24px",gap:12,flexShrink:0}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:15,fontWeight:600,color:C.tx,fontFamily:"'Sora',sans-serif"}}>
+              {"Good morning, "+activeStaff.name.split(" ")[0]}</div>
+            <div style={{fontSize:11,color:C.t3,marginTop:1,fontFamily:"'DM Mono',monospace"}}>
+              {doneCount+" done · "+remainCount+" remaining today"}</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:C.t2,
+              background:C.off,padding:"6px 14px",borderRadius:8,border:"1px solid "+C.br}}>
+              Mon, November 22, 2025</div>
+            {NOW&&(
+              <div style={{display:"flex",alignItems:"center",gap:7,background:"rgba(220,38,38,0.07)",
+                border:"1px solid rgba(220,38,38,0.18)",borderRadius:8,padding:"6px 12px",cursor:"pointer"}}
+                onClick={function(){openClientFile(NOW.clientId);}}>
+                <Dot color="#DC2626" size={6} pulse={true}/>
+                <span style={{fontSize:11,fontWeight:600,color:C.er}}>{NOW.client} — {NOW.pet}</span>
+                <span style={{fontSize:10,color:C.t3,fontFamily:"'DM Mono',monospace"}}>{NOW.time}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{flex:1,overflow:"hidden",padding:"18px 22px",
+          display:"grid",gridTemplateColumns:"1fr 380px",gap:18}}>
+
+          {/* LEFT — Schedule */}
+          <div style={{display:"flex",flexDirection:"column",minHeight:0}}>
+            <div id="hub-tour-sched-header" style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.tx,fontFamily:"'Sora',sans-serif"}}>Today's Schedule</div>
+              <div style={{display:"flex",gap:8}}>
+                <span style={{fontSize:11,color:C.t3,fontFamily:"'DM Mono',monospace"}}>{doneCount+" done · "+remainCount+" remaining"}</span>
+                <button onClick={function(){onNavigate("calendar");}}
+                  style={{fontSize:11,color:C.acc,fontWeight:500,background:"none",border:"none",cursor:"pointer",
+                    textDecoration:"underline",fontFamily:"'Outfit',sans-serif"}}>Full calendar →</button>
+              </div>
+            </div>
+            <div id="hub-tour-sched-list" style={{background:C.wh,borderRadius:12,border:"1px solid "+C.br,overflow:"hidden",
+              flex:1,minHeight:0,display:"flex",flexDirection:"column",boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
+              <div style={{overflowY:"auto",flex:1}}>
+                {SCHED.map(function(item,i){
+                  var isNow=item.status==="now";
+                  var isNext=item.status==="next";
+                  var isDone=item.status==="done";
+                  var isLast=i===SCHED.length-1;
+                  return(
+                    <div key={i} className={isDone?"":"srow"}
+                      style={{display:"flex",borderBottom:isLast?"none":"1px solid "+(isNow?"rgba(255,255,255,0.07)":C.br),
+                        background:isNow?C.sb:isNext?"#F5F8FF":"transparent",
+                        opacity:isDone?0.45:1,cursor:isDone?"default":"pointer",transition:"background 0.12s",position:"relative"}}>
+                      <div style={{width:4,flexShrink:0,background:isNow?C.aLt:isNext?C.am:"transparent",
+                        borderRadius:isNow||isNext?"2px 0 0 2px":"0"}}/>
+                      <div style={{width:52,padding:"14px 0 14px 10px",display:"flex",flexDirection:"column",
+                        justifyContent:"flex-start",flexShrink:0}}>
+                        <div style={{fontSize:11.5,fontWeight:700,fontFamily:"'DM Mono',monospace",
+                          color:isNow?"rgba(255,255,255,0.85)":isNext?C.am:C.t3}}>{item.time}</div>
+                        <div style={{fontSize:9.5,fontFamily:"'DM Mono',monospace",marginTop:2,
+                          color:isNow?"rgba(255,255,255,0.35)":C.t3}}>{item.dur+"m"}</div>
+                      </div>
+                      <div style={{flex:1,padding:isNow?"18px 18px 18px 4px":"12px 18px 12px 4px",display:"flex",
+                        gap:12,alignItems:isNow?"flex-start":"center"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          {isNow&&<div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                            <Dot color="#34D399" size={7} pulse={true}/>
+                            <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",
+                              fontFamily:"'DM Mono',monospace",color:"rgba(255,255,255,0.45)"}}>Now in Room</span>
+                            {item.delay&&<span style={{fontSize:9,fontWeight:700,padding:"2px 8px",borderRadius:6,
+                              background:"rgba(220,38,38,0.2)",color:"#FCA5A5",border:"1px solid rgba(220,38,38,0.3)",
+                              fontFamily:"'DM Mono',monospace"}}>+{item.delay+"m late"}</span>}
+                          </div>}
+                          {isNext&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                            <Dot color={C.am} size={5}/>
+                            <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",
+                              fontFamily:"'DM Mono',monospace",color:C.am}}>Next Up</span>
+                          </div>}
+                          <div style={{fontSize:isNow?18:isNext?14:13,fontWeight:isNow||isNext?700:500,
+                            fontFamily:"'Sora',sans-serif",color:isNow?"#fff":C.tx,
+                            whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.client}</div>
+                          <div style={{fontSize:isNow?13:11,marginTop:isNow?5:3,
+                            color:isNow?"rgba(255,255,255,0.55)":C.t2}}>
+                            {item.pet}<span style={{fontSize:isNow?11:10,marginLeft:6,
+                              color:isNow?"rgba(255,255,255,0.32)":C.t3}}>{item.breed}</span></div>
+                          <div style={{display:"flex",alignItems:"center",gap:5,marginTop:isNow?8:4}}>
+                            <Dot color={isNow?"rgba(255,255,255,0.4)":item.color} size={isNow?7:5}/>
+                            <span style={{fontSize:isNow?11:10,color:isNow?"rgba(255,255,255,0.45)":C.t3}}>{item.type}</span>
+                          </div>
+                          {isNow&&item.alerts.length>0&&(
+                            <div style={{marginTop:10,display:"inline-flex",alignItems:"flex-start",gap:8,
+                              background:"rgba(220,38,38,0.15)",border:"1px solid rgba(220,38,38,0.28)",
+                              borderRadius:8,padding:"7px 11px"}}>
+                              <span style={{fontSize:11,flexShrink:0}}>⚠️</span>
+                              <div style={{fontSize:11,color:"rgba(255,255,255,0.82)",lineHeight:1.45}}>
+                                {item.alerts.join(" · ")}</div>
+                            </div>
+                          )}
+                        </div>
+                        {isNow&&(
+                          <div style={{display:"flex",flexDirection:"column",gap:7,flexShrink:0}}>
+                            <button onClick={function(){openClientFile(item.clientId);}}
+                              style={{padding:"9px 18px",borderRadius:9,border:"none",cursor:"pointer",
+                                whiteSpace:"nowrap",background:"linear-gradient(135deg,#2563A8,#1a4a8a)",
+                                color:"#fff",fontSize:12,fontWeight:700,fontFamily:"'Sora',sans-serif",
+                                boxShadow:"0 3px 14px rgba(37,99,168,0.45)",display:"flex",alignItems:"center",gap:6}}>
+                              📋 Open File
+                            </button>
+                            <button onClick={function(){onNavigate("vetroom");}}
+                              style={{padding:"9px 18px",borderRadius:9,cursor:"pointer",
+                                background:"rgba(13,148,136,0.15)",border:"1px solid rgba(13,148,136,0.3)",
+                                color:"#2DD4BF",fontSize:11,fontWeight:600,fontFamily:"'Outfit',sans-serif",
+                                whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
+                              🩺 Vet Room →
+                            </button>
+                          </div>
+                        )}
+                        {isNext&&(
+                          <button onClick={function(){showToast("Preview — "+item.client);}}
+                            style={{padding:"6px 14px",borderRadius:8,flexShrink:0,
+                              border:"1px solid "+C.br,cursor:"pointer",background:C.off,
+                              color:C.t2,fontSize:11,fontFamily:"'Outfit',sans-serif",whiteSpace:"nowrap"}}>
+                            👁 Preview
+                          </button>
+                        )}
+                        {isDone&&item.postVisit==="at-reception"&&(
+                          <span style={{fontSize:9.5,fontWeight:600,padding:"3px 9px",borderRadius:8,
+                            background:"rgba(37,99,168,0.1)",color:C.acc,
+                            border:"1px solid rgba(37,99,168,0.2)",fontFamily:"'Outfit',sans-serif",
+                            whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                            <Dot color={C.acc} size={5} pulse={true}/>At Reception
+                          </span>
+                        )}
+                        {isDone&&item.postVisit==="discharged"&&(
+                          <span style={{fontSize:9.5,fontWeight:600,padding:"3px 9px",borderRadius:8,
+                            background:C.gBg,color:C.gn,border:"1px solid "+C.gBr,
+                            fontFamily:"'Outfit',sans-serif",whiteSpace:"nowrap",flexShrink:0}}>✓ Discharged</span>
+                        )}
+                        {item.status==="upcoming"&&(
+                          <span style={{fontSize:10,padding:"3px 10px",borderRadius:10,
+                            background:C.off,color:C.t2,flexShrink:0,fontFamily:"'Outfit',sans-serif"}}>Upcoming</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT — Client Search + Messages */}
+          <div style={{display:"flex",flexDirection:"column",gap:16,minHeight:0}}>
+            {/* Client Search */}
+            <div id="hub-tour-client-search" style={{background:C.wh,borderRadius:12,border:"1px solid "+C.br,
+              overflow:"hidden",boxShadow:"0 1px 6px rgba(0,0,0,0.05)",flexShrink:0}}>
+              <div style={{background:C.sb,padding:"12px 16px"}}>
+                <div style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.4)",
+                  letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:"'DM Mono',monospace",marginBottom:8}}>
+                  🔍 Client Search</div>
+                <div style={{position:"relative"}}>
+                  <input placeholder="Name, phone, or pet…" value={srQ}
+                    onChange={function(e){liveSearch(e.target.value);}}
+                    style={{width:"100%",padding:"8px 32px 8px 11px",borderRadius:8,
+                      border:"1px solid rgba(255,255,255,0.18)",fontSize:12.5,
+                      color:"rgba(255,255,255,0.92)",background:"rgba(255,255,255,0.09)",outline:"none"}}/>
+                  {srQ&&<button onClick={function(){setSrQ("");setSrRes(null);}}
+                    style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",
+                      background:"transparent",color:"rgba(255,255,255,0.4)",fontSize:16,padding:0,lineHeight:1}}>×</button>}
+                </div>
+              </div>
+              {srRes===null&&(
+                <div style={{padding:"10px 16px"}}>
+                  {CLIENTS_DB.slice(0,3).map(function(c){
+                    var nowPet=c.pets.find(function(p){return p.inClinic;});
+                    return(
+                      <div key={c.id} className="client-row"
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",
+                          borderBottom:"1px solid "+C.br,cursor:"pointer",transition:"background 0.1s"}}
+                        onClick={function(){openClientFile(c.id);}}>
+                        <div style={{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,"+C.acc+","+C.aLt+")",
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{initials(c.name)}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:600,color:C.tx,
+                            display:"flex",alignItems:"center",gap:6}}>
+                            {c.name}
+                            {nowPet&&<Dot color="#34D399" size={5} pulse={true}/>}
+                          </div>
+                          <div style={{fontSize:11,color:C.t3}}>{c.pets.map(function(p){return p.icon+" "+p.name;}).join(" · ")}</div>
+                        </div>
+                        <span style={{fontSize:11,color:C.acc,fontWeight:600}}>→</span>
+                      </div>
+                    );
+                  })}
+                  <div style={{paddingTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:11,color:C.t3}}>{CLIENTS_DB.length+" clients total"}</span>
+                    <button style={{fontSize:11,color:C.acc,background:"none",border:"none",cursor:"pointer",
+                      fontWeight:500,fontFamily:"'Outfit',sans-serif",textDecoration:"underline"}}>View all →</button>
+                  </div>
+                </div>
+              )}
+              {srRes!==null&&(
+                <div style={{maxHeight:220,overflowY:"auto"}}>
+                  {srRes.length===0
+                    ?<div style={{padding:"16px",textAlign:"center",fontSize:12,color:C.t3}}>No clients found</div>
+                    :srRes.map(function(c){return(
+                      <div key={c.id} className="client-row"
+                        style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",
+                          borderBottom:"1px solid "+C.br,cursor:"pointer",transition:"background 0.1s"}}
+                        onClick={function(){openClientFile(c.id);}}>
+                        <div style={{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,"+C.acc+","+C.aLt+")",
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>{initials(c.name)}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:13,fontWeight:600,color:C.tx}}>{c.name}</div>
+                          <div style={{fontSize:11,color:C.t3}}>{c.pets.map(function(p){return p.icon+" "+p.name;}).join(" · ")}</div>
+                        </div>
+                        <div style={{fontSize:11,color:C.t2,fontFamily:"'DM Mono',monospace",flexShrink:0}}>{c.phone}</div>
+                      </div>
+                    );})}
+                </div>
+              )}
+            </div>
+
+            {/* Messages */}
+            <div id="hub-tour-messages" style={{background:C.wh,borderRadius:12,border:"1px solid "+C.br,
+              overflow:"hidden",flex:1,minHeight:0,display:"flex",flexDirection:"column",
+              boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
+              <div style={{padding:"11px 16px",borderBottom:"1px solid "+C.br,display:"flex",
+                alignItems:"center",gap:8,flexShrink:0}}>
+                <span style={{fontSize:13,fontWeight:600,color:C.tx,fontFamily:"'Sora',sans-serif"}}>Messages</span>
+                {unread>0&&<span style={{fontSize:10,fontWeight:700,padding:"2px 8px",borderRadius:9,
+                  background:C.rBg,color:C.er,border:"1px solid "+C.rBr,fontFamily:"'DM Mono',monospace"}}>
+                  {unread} unread</span>}
+                <button onClick={function(){setComposing(function(c){return !c;});}}
+                  style={{marginLeft:"auto",width:28,height:28,borderRadius:8,
+                    border:"1px solid "+(composing?C.acc:C.br),
+                    background:composing?C.acc:C.wh,cursor:"pointer",fontSize:18,
+                    fontWeight:300,lineHeight:1,color:composing?"#fff":C.t2,
+                    display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+              </div>
+              {composing&&(
+                <div style={{padding:"10px 14px",borderBottom:"1px solid "+C.br,background:C.off,flexShrink:0}}>
+                  <textarea placeholder="Write to team or colleague…" rows={2}
+                    style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1px solid "+C.br,
+                      fontSize:12,color:C.tx,background:C.wh,resize:"none",lineHeight:1.5}}/>
+                  <div style={{display:"flex",gap:6,marginTop:7,justifyContent:"flex-end"}}>
+                    <button onClick={function(){setComposing(false);}}
+                      style={{padding:"5px 12px",borderRadius:6,border:"1px solid "+C.br,
+                        background:"transparent",fontSize:11,color:C.t2,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>Cancel</button>
+                    <button onClick={function(){setComposing(false);showToast("Message sent");}}
+                      style={{padding:"5px 12px",borderRadius:6,border:"none",
+                        background:C.acc,fontSize:11,color:"#fff",cursor:"pointer",
+                        fontWeight:600,fontFamily:"'Outfit',sans-serif"}}>Send →</button>
+                  </div>
+                </div>
+              )}
+              <div style={{flex:1,overflowY:"auto"}}>
+                {MSGS_REC.map(function(msg){return(
+                  <div key={msg.id} className="msg-row"
+                    style={{padding:"11px 16px",borderBottom:"1px solid #F1F5F9",
+                      cursor:"pointer",transition:"background 0.12s",background:msg.unread?"#FAFBFF":C.wh}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}>
+                      <div style={{width:6,height:6,borderRadius:"50%",
+                        background:msg.unread?C.acc:"transparent",flexShrink:0}}/>
+                      <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",
+                        fontFamily:"'DM Mono',monospace",padding:"2px 6px",borderRadius:4,
+                        background:msg.tb,color:msg.tc,border:"1px solid "+msg.tbr}}>{msg.tag}</span>
+                      <span style={{fontSize:12,fontWeight:600,color:C.tx,flex:1,fontFamily:"'Sora',sans-serif"}}>{msg.sender}</span>
+                      <span style={{fontSize:10,fontFamily:"'DM Mono',monospace",color:C.t3,flexShrink:0}}>{msg.time}</span>
+                    </div>
+                    <div style={{fontSize:12,color:C.t2,lineHeight:1.55,paddingLeft:13,marginBottom:6}}>{msg.body}</div>
+                    {replyTo===msg.id?(
+                      <div style={{paddingLeft:13}}>
+                        <textarea placeholder={"Reply to "+msg.sender+"…"} value={replyTxt}
+                          onChange={function(e){setReplyTxt(e.target.value);}} rows={2} autoFocus
+                          style={{width:"100%",padding:"7px 10px",borderRadius:7,border:"1px solid "+C.br,
+                            fontSize:11,color:C.tx,background:C.off,resize:"none",lineHeight:1.5}}/>
+                        <div style={{display:"flex",gap:6,marginTop:5,justifyContent:"flex-end"}}>
+                          <button onClick={function(){setReplyTo(null);setReplyTxt("");}}
+                            style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.br,
+                              background:"transparent",fontSize:10.5,color:C.t2,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>Cancel</button>
+                          <button onClick={function(){setReplyTo(null);setReplyTxt("");showToast("Reply sent");}}
+                            style={{padding:"4px 10px",borderRadius:6,border:"none",background:C.acc,
+                              fontSize:10.5,color:"#fff",cursor:"pointer",fontWeight:600,fontFamily:"'Outfit',sans-serif"}}>Send →</button>
+                        </div>
+                      </div>
+                    ):(
+                      <button onClick={function(){setReplyTo(msg.id);}}
+                        style={{paddingLeft:13,fontSize:11,color:C.acc,background:"none",border:"none",
+                          cursor:"pointer",fontWeight:500,fontFamily:"'Outfit',sans-serif"}}>↩ Reply</button>
+                    )}
+                  </div>
+                );})}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+</script>
+
+<!-- ═══ SCRIPT 3 · Vet Room View ═══ -->
+<script type="text/babel">
+function VetRoomView({onNavigate,activeVet,onVetSwitch,toast,showToast,onStartDemo}){
+  var _nav=useState("dashboard");var navId=_nav[0];var setNavId=_nav[1];
+  var _sel=useState(null);var selAppt=_sel[0];var setSelAppt=_sel[1];
+  var _replyTo=useState(null);var replyTo=_replyTo[0];var setReplyTo=_replyTo[1];
+
+  var C=C_VET;
+  var doneCount=SCHED.filter(function(s){return s.status==="done";}).length;
+  var remainCount=SCHED.filter(function(s){return s.status!=="done";}).length;
+  var unread=MSGS_VET.filter(function(m){return m.unread;}).length;
+  var NOW=SCHED.find(function(s){return s.status==="now";});
+
+  function openClientFile(clientId){
+    if(clientId){try{sessionStorage.setItem("vets_clientId",clientId);}catch(e){}}
+    window.location.href="vets-client-file_8.html";
+  }
+
+  var NAV=[
+    {id:"dashboard",ico:"⊞",lbl:"Dashboard"},
+    {id:"reception",ico:"🏥",lbl:"Reception",onClick:function(){onNavigate("reception");}},
+    {id:"calendar",ico:"📅",lbl:"Calendar",onClick:function(){onNavigate("calendar");}},
+    {id:"messages",ico:"✉",lbl:"Messages",badge:unread},
+    {id:"settings",ico:"⚙",lbl:"Settings"},
+  ];
+  var MORE_ITEMS={
+    Clinic:["📋 Patient Records","📊 Reports","💊 Prescriptions","🔬 Lab Results"],
+    Team:["👥 Staff Schedule","💬 Team Chat"],
+    Settings:["⚙️ Preferences","👤 My Profile"],
+  };
+
+  return(
+    <div style={{display:"flex",height:"100vh",overflow:"hidden",background:C.off}}>
+      <Sidebar C={C} role="VET ROOM" nav={NAV} activeNav={navId}
+        onNav={function(id){
+          var item=NAV.find(function(n){return n.id===id;});
+          if(item&&item.onClick){item.onClick();return;}
+          setNavId(id);
+        }}
+        user={activeVet} users={VETS} onUserSwitch={onVetSwitch}
+        moreItems={MORE_ITEMS} onStartDemo={onStartDemo}/>
+
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+        {/* Topbar */}
+        <div style={{height:58,background:C.wh,borderBottom:"1px solid "+C.br,display:"flex",
+          alignItems:"center",justifyContent:"space-between",padding:"0 24px",flexShrink:0}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:600,color:C.tx,fontFamily:"'Sora',sans-serif"}}>
+              {"Good morning, "+activeVet.name.split(" ").slice(-1)[0]}</div>
+            <div style={{fontSize:11,color:C.t3,fontFamily:"'DM Mono',monospace",marginTop:1}}>
+              {doneCount+" done · "+remainCount+" remaining today"}</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            {NOW&&(
+              <div style={{display:"flex",alignItems:"center",gap:7,
+                background:"rgba(13,148,136,0.08)",border:"1px solid rgba(13,148,136,0.2)",
+                borderRadius:8,padding:"6px 12px",cursor:"pointer"}}
+                onClick={function(){openClientFile(NOW.clientId);}}>
+                <Dot color={C.acc} size={6} pulse={true}/>
+                <span style={{fontSize:11,fontWeight:600,color:C.acc}}>{NOW.client+" — "+NOW.pet}</span>
+                <span style={{fontSize:10,color:C.t3,fontFamily:"'DM Mono',monospace"}}>{NOW.time}</span>
+              </div>
+            )}
+            <div style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:C.t2,
+              background:C.off,padding:"6px 14px",borderRadius:8,border:"1px solid "+C.br}}>
+              Mon, November 22, 2025</div>
+          </div>
+        </div>
+
+        {/* Content — schedule left, patient+messages right */}
+        <div style={{flex:1,overflow:"hidden",padding:"18px 22px",
+          display:"grid",gridTemplateColumns:"1fr 380px",gap:18}}>
+
+          {/* LEFT — Schedule */}
+          <div style={{display:"flex",flexDirection:"column",minHeight:0}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{fontSize:13,fontWeight:600,color:C.tx,fontFamily:"'Sora',sans-serif"}}>Today's Schedule</div>
+              <button onClick={function(){onNavigate("calendar");}}
+                style={{fontSize:11,color:C.acc,fontWeight:500,background:"none",border:"none",cursor:"pointer",
+                  textDecoration:"underline",fontFamily:"'Outfit',sans-serif"}}>Full calendar →</button>
+            </div>
+            <div style={{background:C.wh,borderRadius:12,border:"1px solid "+C.br,overflow:"hidden",
+              flex:1,minHeight:0,display:"flex",flexDirection:"column",boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
+              <div style={{overflowY:"auto",flex:1}}>
+                {SCHED.map(function(item,i){
+                  var isNow=item.status==="now";
+                  var isNext=item.status==="next";
+                  var isDone=item.status==="done";
+                  var isSel=selAppt===i;
+                  return(
+                    <div key={i}
+                      onClick={function(){setSelAppt(isSel?null:i);}}
+                      style={{display:"flex",borderBottom:i<SCHED.length-1?"1px solid "+(isNow?"rgba(255,255,255,0.07)":C.br):"none",
+                        background:isNow?C.sb:isSel?"#F0FDFA":isDone?"transparent":"transparent",
+                        opacity:isDone?0.45:1,cursor:"pointer",transition:"background 0.12s",position:"relative"}}>
+                      <div style={{width:4,flexShrink:0,background:isNow?C.aLt:isNext?C.am:isSel?C.acc:"transparent",
+                        borderRadius:"2px 0 0 2px"}}/>
+                      <div style={{width:50,padding:"12px 0 12px 10px",flexShrink:0}}>
+                        <div style={{fontSize:11,fontWeight:700,fontFamily:"'DM Mono',monospace",
+                          color:isNow?"rgba(255,255,255,0.85)":isNext?C.am:C.t3}}>{item.time}</div>
+                        <div style={{fontSize:9,fontFamily:"'DM Mono',monospace",marginTop:2,
+                          color:isNow?"rgba(255,255,255,0.35)":C.t3}}>{item.dur+"m"}</div>
+                      </div>
+                      <div style={{flex:1,padding:isNow?"16px 16px 16px 4px":"10px 16px 10px 4px",
+                        display:"flex",gap:10,alignItems:"center"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          {isNow&&<div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                            <Dot color="#34D399" size={6} pulse={true}/>
+                            <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",
+                              fontFamily:"'DM Mono',monospace",color:"rgba(255,255,255,0.45)"}}>Now in Room</span>
+                            {item.delay&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:5,
+                              background:"rgba(220,38,38,0.2)",color:"#FCA5A5",fontFamily:"'DM Mono',monospace"}}>
+                              +{item.delay+"m"}</span>}
+                          </div>}
+                          <div style={{fontSize:isNow?17:13,fontWeight:isNow||isNext?700:500,
+                            fontFamily:"'Sora',sans-serif",color:isNow?"#fff":C.tx,
+                            whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.client}</div>
+                          <div style={{fontSize:isNow?12:11,marginTop:3,
+                            color:isNow?"rgba(255,255,255,0.55)":C.t2}}>
+                            {item.pet}<span style={{fontSize:10,marginLeft:5,
+                              color:isNow?"rgba(255,255,255,0.3)":C.t3}}>{item.breed}</span></div>
+                          <div style={{display:"flex",alignItems:"center",gap:4,marginTop:isNow?8:4}}>
+                            <Dot color={isNow?"rgba(255,255,255,0.4)":item.color} size={5}/>
+                            <span style={{fontSize:10,color:isNow?"rgba(255,255,255,0.45)":C.t3}}>{item.type}</span>
+                          </div>
+                          {isNow&&item.alerts.length>0&&(
+                            <div style={{marginTop:8,background:"rgba(220,38,38,0.15)",
+                              border:"1px solid rgba(220,38,38,0.28)",borderRadius:7,
+                              padding:"6px 10px",fontSize:11,color:"rgba(255,255,255,0.82)"}}>
+                              ⚠️ {item.alerts.join(" · ")}
+                            </div>
+                          )}
+                        </div>
+                        {isNow&&(
+                          <button onClick={function(e){e.stopPropagation();openClientFile(item.clientId);}}
+                            style={{padding:"8px 14px",borderRadius:8,border:"none",cursor:"pointer",
+                              background:"rgba(45,212,191,0.2)",color:C.aLt,fontSize:11,fontWeight:700,
+                              fontFamily:"'Outfit',sans-serif",flexShrink:0,whiteSpace:"nowrap"}}>
+                            📋 View File
+                          </button>
+                        )}
+                        {!isNow&&!isDone&&(
+                          <span style={{fontSize:9.5,padding:"3px 9px",borderRadius:8,background:C.off,
+                            color:C.t2,flexShrink:0,fontFamily:"'Outfit',sans-serif"}}>
+                            {isNext?"Next":item.status==="upcoming"?"Upcoming":""}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT — Active Patient + Messages */}
+          <div style={{display:"flex",flexDirection:"column",gap:14,minHeight:0}}>
+            {/* Active patient card */}
+            {NOW&&(
+              <div style={{background:C.sb,borderRadius:12,overflow:"hidden",
+                boxShadow:"0 4px 20px rgba(13,36,32,0.25)",flexShrink:0}}>
+                <div style={{padding:"14px 18px",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                    <Dot color="#34D399" size={6} pulse={true}/>
+                    <span style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",
+                      letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:"'DM Mono',monospace"}}>
+                      Active Patient</span>
+                  </div>
+                  <div style={{fontSize:20,fontWeight:700,color:"#fff",fontFamily:"'Sora',sans-serif"}}>{NOW.pet}</div>
+                  <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginTop:3}}>{NOW.client}</div>
+                </div>
+                <div style={{padding:"12px 18px"}}>
+                  <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:10}}>
+                    {[["Type",NOW.type],["Breed",NOW.breed],["Time",NOW.time]].map(function(pair){return(
+                      <div key={pair[0]} style={{background:"rgba(255,255,255,0.08)",borderRadius:7,
+                        padding:"5px 10px",fontSize:10}}>
+                        <div style={{color:"rgba(255,255,255,0.35)",marginBottom:2,fontFamily:"'DM Mono',monospace",
+                          letterSpacing:"0.06em",textTransform:"uppercase",fontSize:8}}>{pair[0]}</div>
+                        <div style={{color:"rgba(255,255,255,0.85)",fontWeight:600}}>{pair[1]}</div>
+                      </div>
+                    );})}
+                  </div>
+                  {NOW.alerts.length>0&&(
+                    <div style={{background:"rgba(220,38,38,0.15)",border:"1px solid rgba(220,38,38,0.3)",
+                      borderRadius:8,padding:"8px 12px",marginBottom:10,display:"flex",gap:8}}>
+                      <span style={{fontSize:12,flexShrink:0}}>⚠️</span>
+                      <div style={{fontSize:11,color:"rgba(255,255,255,0.82)",lineHeight:1.45}}>
+                        {NOW.alerts.join(" · ")}</div>
+                    </div>
+                  )}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
+                    <button onClick={function(){openClientFile(NOW.clientId);}}
+                      style={{padding:"9px",borderRadius:8,border:"none",cursor:"pointer",
+                        background:"rgba(255,255,255,0.12)",color:"rgba(255,255,255,0.88)",
+                        fontSize:11,fontWeight:600,fontFamily:"'Outfit',sans-serif",
+                        display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                      📋 Patient File
+                    </button>
+                    <button onClick={function(){showToast("SOAP note opened for "+NOW.pet);}}
+                      style={{padding:"9px",borderRadius:8,border:"none",cursor:"pointer",
+                        background:"rgba(45,212,191,0.18)",color:C.aLt,
+                        fontSize:11,fontWeight:600,fontFamily:"'Outfit',sans-serif",
+                        display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                      📝 SOAP Note
+                    </button>
+                    <button onClick={function(){showToast("Discharge form for "+NOW.pet);}}
+                      style={{padding:"9px",borderRadius:8,cursor:"pointer",
+                        background:"rgba(5,150,105,0.15)",color:C.gn,
+                        border:"1px solid rgba(5,150,105,0.3)",
+                        fontSize:11,fontWeight:600,fontFamily:"'Outfit',sans-serif",gridColumn:"1 / -1",
+                        display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+                      ✓ End Visit + Discharge
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Messages */}
+            <div style={{background:C.wh,borderRadius:12,border:"1px solid "+C.br,
+              overflow:"hidden",flex:1,minHeight:0,display:"flex",flexDirection:"column",
+              boxShadow:"0 1px 6px rgba(0,0,0,0.05)"}}>
+              <div style={{padding:"10px 16px",borderBottom:"1px solid "+C.br,display:"flex",
+                alignItems:"center",gap:8,flexShrink:0}}>
+                <span style={{fontSize:13,fontWeight:600,color:C.tx,fontFamily:"'Sora',sans-serif"}}>Messages</span>
+                {unread>0&&<span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:9,
+                  background:C.rBg,color:C.er,border:"1px solid "+C.rBr,fontFamily:"'DM Mono',monospace"}}>
+                  {unread}</span>}
+              </div>
+              <div style={{flex:1,overflowY:"auto"}}>
+                {MSGS_VET.map(function(msg){return(
+                  <div key={msg.id} className="msg-row"
+                    style={{padding:"10px 16px",borderBottom:"1px solid #F1F5F9",
+                      cursor:"pointer",background:msg.unread?"#FAFBFF":C.wh,transition:"background 0.12s"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:4}}>
+                      <div style={{width:6,height:6,borderRadius:"50%",
+                        background:msg.unread?C.acc:"transparent",flexShrink:0}}/>
+                      <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",
+                        fontFamily:"'DM Mono',monospace",padding:"2px 6px",borderRadius:4,
+                        background:msg.tb,color:msg.tc,border:"1px solid "+msg.tbr}}>{msg.tag}</span>
+                      <span style={{fontSize:12,fontWeight:600,color:C.tx,flex:1,fontFamily:"'Sora',sans-serif"}}>{msg.sender}</span>
+                      <span style={{fontSize:10,fontFamily:"'DM Mono',monospace",color:C.t3}}>{msg.time}</span>
+                    </div>
+                    <div style={{fontSize:12,color:C.t2,lineHeight:1.55,paddingLeft:13,marginBottom:5}}>{msg.body}</div>
+                    {replyTo===msg.id?(
+                      <div style={{paddingLeft:13}}>
+                        <textarea placeholder={"Reply to "+msg.sender+"…"} rows={2} autoFocus
+                          style={{width:"100%",padding:"7px 10px",borderRadius:7,border:"1px solid "+C.br,
+                            fontSize:11,color:C.tx,background:C.off,resize:"none",lineHeight:1.5}}/>
+                        <div style={{display:"flex",gap:6,marginTop:5,justifyContent:"flex-end"}}>
+                          <button onClick={function(){setReplyTo(null);}}
+                            style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+C.br,
+                              background:"transparent",fontSize:10.5,color:C.t2,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>Cancel</button>
+                          <button onClick={function(){setReplyTo(null);showToast("Reply sent");}}
+                            style={{padding:"4px 10px",borderRadius:6,border:"none",background:C.acc,
+                              fontSize:10.5,color:"#fff",cursor:"pointer",fontWeight:600,fontFamily:"'Outfit',sans-serif"}}>Send →</button>
+                        </div>
+                      </div>
+                    ):(
+                      <button onClick={function(){setReplyTo(msg.id);}}
+                        style={{paddingLeft:13,fontSize:11,color:C.acc,background:"none",border:"none",
+                          cursor:"pointer",fontWeight:500,fontFamily:"'Outfit',sans-serif"}}>↩ Reply</button>
+                    )}
+                  </div>
+                );})}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+</script>
+
+<!-- ═══ SCRIPT 4 · Calendar View (new page) ═══ -->
+<script type="text/babel">
+var CAL_START=8*60;  // 08:00
+var CAL_END=18*60;   // 18:00
+var PX_PER_MIN=1.5;
+
+function CalendarView({onNavigate,activeStaff,onStaffSwitch,toast,showToast,onStartDemo}){
+  var _nav=useState("calendar");var navId=_nav[0];var setNavId=_nav[1];
+  var _weekOff=useState(0);var weekOff=_weekOff[0];var setWeekOff=_weekOff[1];
+  var _selAppt=useState(null);var selAppt=_selAppt[0];var setSelAppt=_selAppt[1];
+  var _showNew=useState(false);var showNew=_showNew[0];var setShowNew=_showNew[1];
+  var _newForm=useState({clientId:"",petId:"",date:"Mon",time:"10:00",dur:30,type:"Medical Exam",vetId:1});
+  var newForm=_newForm[0];var setNewForm=_newForm[1];
+  var _appts=useState(function(){
+    var all=[];
+    WEEK_DAYS.forEach(function(d){
+      (WEEK_SCHED[d]||[]).forEach(function(a){all.push(Object.assign({},a,{day:d}));});
+    });
+    return all;
+  });
+  var appts=_appts[0];var setAppts=_appts[1];
+  var C=C_CAL;
+  var VISIT_TYPES=["Medical Exam","Annual Exam","Vaccination","Follow-up","Blood Test","Dental Cleaning","Procedure","X-Ray","Checkup"];
+  var TYPE_COLORS={"Medical Exam":"#2563A8","Annual Exam":"#2563A8","Vaccination":"#059669","Follow-up":"#C94040","Blood Test":"#DC2626","Dental Cleaning":"#7C3AED","Procedure":"#D97706","X-Ray":"#0891B2","Checkup":"#059669"};
+
+  function openClientFile(clientId){
+    if(clientId){try{sessionStorage.setItem("vets_clientId",clientId);}catch(e){}}
+    window.location.href="vets-client-file_8.html";
+  }
+  function apptTop(startTime){return (timeToMin(startTime)-CAL_START)*PX_PER_MIN;}
+  function apptH(dur){return Math.max(dur*PX_PER_MIN,24);}
+
+  var totalH=(CAL_END-CAL_START)*PX_PER_MIN;
+  var hours=[];for(var hh=8;hh<18;hh++)hours.push(hh);
+
+  var NAV=[
+    {id:"calendar",ico:"📅",lbl:"Calendar"},
+    {id:"reception",ico:"🏥",lbl:"Reception",onClick:function(){onNavigate("reception");}},
+    {id:"vetroom",ico:"🩺",lbl:"Vet Room",onClick:function(){onNavigate("vetroom");}},
+    {id:"settings",ico:"⚙",lbl:"Settings"},
+  ];
+
+  var selData=selAppt?appts.find(function(a){return a.id===selAppt;}):null;
+  var nowAppt=appts.find(function(a){return a.status==="now";});
+
+  function addAppointment(){
+    var cl=CLIENTS_DB.find(function(c){return c.id===newForm.clientId;});
+    if(!cl)return;
+    var pet=cl.pets.find(function(p){return p.id===newForm.petId;})||cl.pets[0];
+    var vet=VETS.find(function(v){return v.id===parseInt(newForm.vetId);})||VETS[0];
+    var col=TYPE_COLORS[newForm.type]||"#2563A8";
+    var newId="NW"+Date.now();
+    setAppts(function(prev){
+      return prev.concat([{id:newId,day:newForm.date,start:newForm.time,dur:parseInt(newForm.dur),
+        clientId:newForm.clientId,client:cl.name,pet:pet.name,type:newForm.type,
+        color:col,vet:vet.name,status:"upcoming",alerts:pet.alerts||[]}]);
+    });
+    setShowNew(false);
+    showToast("Appointment added — "+cl.name+" · "+pet.name);
+    setNewForm({clientId:"",petId:"",date:"Mon",time:"10:00",dur:30,type:"Medical Exam",vetId:1});
+  }
+
+  var inpSt={width:"100%",padding:"7px 10px",borderRadius:7,border:"1px solid #E2E7EF",
+    fontSize:12,color:"#0F172A",background:"#F4F6F9",fontFamily:"'Outfit',sans-serif"};
+  var lbl={fontSize:10,fontWeight:600,color:"#94A3B8",textTransform:"uppercase",letterSpacing:"0.06em",
+    display:"block",marginBottom:4,fontFamily:"'DM Mono',monospace"};
+
+  return(
+    <div style={{display:"flex",height:"100vh",overflow:"hidden",background:C.off}}>
+      <Sidebar C={C} role="CALENDAR" nav={NAV} activeNav={navId}
+        onNav={function(id){
+          var item=NAV.find(function(n){return n.id===id;});
+          if(item&&item.onClick){item.onClick();return;}
+          setNavId(id);
+        }}
+        user={activeStaff} users={STAFF} onUserSwitch={onStaffSwitch}
+        moreItems={null} onStartDemo={onStartDemo}/>
+
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
+        {/* Topbar */}
+        <div style={{height:58,background:C.wh,borderBottom:"1px solid "+C.br,display:"flex",
+          alignItems:"center",padding:"0 22px",gap:14,flexShrink:0}}>
+          <button onClick={function(){setWeekOff(function(w){return w-1;});}}
+            style={{width:30,height:30,borderRadius:8,border:"1px solid "+C.br,background:C.off,
+              color:C.t2,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+          <div style={{flex:1}}>
+            <div style={{fontSize:15,fontWeight:700,color:C.tx,fontFamily:"'Sora',sans-serif"}}>
+              {weekOff===0?"This Week — November 2025":weekOff===1?"Next Week — December 2025":"Week "+weekOff}</div>
+            <div style={{fontSize:11,color:C.t3,fontFamily:"'DM Mono',monospace",marginTop:1}}>
+              {appts.length+" appointments scheduled"}</div>
+          </div>
+          <button onClick={function(){setWeekOff(function(w){return w+1;});}}
+            style={{width:30,height:30,borderRadius:8,border:"1px solid "+C.br,background:C.off,
+              color:C.t2,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+          <button onClick={function(){setWeekOff(0);}}
+            style={{padding:"6px 14px",borderRadius:7,border:"1px solid "+C.br,background:C.off,
+              color:C.t2,fontSize:12,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>Today</button>
+          <button onClick={function(){setShowNew(true);}}
+            style={{padding:"7px 16px",background:C.acc,color:"#fff",border:"none",borderRadius:8,
+              fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Outfit',sans-serif",
+              boxShadow:"0 2px 10px rgba(124,58,237,0.3)",display:"flex",alignItems:"center",gap:6}}>
+            + New Appointment
+          </button>
+          <button onClick={function(){window.location.href="vets-new-client.html";}}
+            style={{padding:"7px 16px",background:"transparent",color:C.acc,
+              border:"1px solid "+C.acc,borderRadius:8,
+              fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"'Outfit',sans-serif",
+              display:"flex",alignItems:"center",gap:6}}>
+            + New Client
+          </button>
+        </div>
+
+        <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          {/* Day headers */}
+          <div style={{display:"grid",gridTemplateColumns:"52px repeat(5, 1fr)",
+            background:C.wh,borderBottom:"1px solid "+C.br,flexShrink:0}}>
+            <div style={{borderRight:"1px solid "+C.br}}/>
+            {WEEK_DAYS.map(function(d,i){
+              var dayAppts=appts.filter(function(a){return a.day===d;});
+              var hasNow=dayAppts.some(function(a){return a.status==="now";});
+              return(
+                <div key={d} style={{padding:"10px 12px",borderRight:"1px solid "+C.br,
+                  background:hasNow?"rgba(124,58,237,0.04)":"transparent"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:700,color:C.t3,letterSpacing:"0.06em",
+                        fontFamily:"'DM Mono',monospace"}}>{d.toUpperCase()}</div>
+                      <div style={{fontSize:20,fontWeight:700,color:hasNow?C.acc:C.tx,fontFamily:"'Sora',sans-serif",lineHeight:1}}>
+                        {WEEK_DATES[i]}</div>
+                    </div>
+                    {dayAppts.length>0&&(
+                      <span style={{fontSize:10,fontWeight:700,padding:"2px 7px",borderRadius:99,
+                        background:hasNow?C.acc+"22":C.off,color:hasNow?C.acc:C.t3,
+                        fontFamily:"'DM Mono',monospace",border:"1px solid "+(hasNow?C.acc+"33":C.br)}}>
+                        {dayAppts.length}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Calendar grid */}
+          <div style={{flex:1,overflow:"auto",display:"flex"}}>
+            {/* Time column */}
+            <div style={{width:52,flexShrink:0,borderRight:"1px solid "+C.br,position:"relative",
+              height:totalH+32,background:C.wh}}>
+              {hours.map(function(h){return(
+                <div key={h} style={{position:"absolute",
+                  top:(h-8)*60*PX_PER_MIN+4,
+                  left:0,right:0,padding:"0 8px"}}>
+                  <span style={{fontSize:9.5,fontFamily:"'DM Mono',monospace",color:C.t3}}>
+                    {(h<10?"0":"")+h+":00"}</span>
+                </div>
+              );})}
+            </div>
+            {/* Day columns */}
+            {WEEK_DAYS.map(function(day){
+              var dayAppts=appts.filter(function(a){return a.day===day;});
+              return(
+                <div key={day} className="cal-col"
+                  style={{flex:1,borderRight:"1px solid "+C.br,position:"relative",
+                    height:totalH+32,minWidth:120}}>
+                  {/* Hour lines */}
+                  {hours.map(function(h){return(
+                    <div key={h} style={{position:"absolute",
+                      top:(h-8)*60*PX_PER_MIN,left:0,right:0,
+                      borderTop:"1px solid "+C.br,height:30*PX_PER_MIN,opacity:0.5}}/>
+                  );})}
+                  {/* Appointments */}
+                  {dayAppts.map(function(appt){
+                    var top=apptTop(appt.start);
+                    var height=apptH(appt.dur);
+                    var isNow=appt.status==="now";
+                    var isSel=selAppt===appt.id;
+                    return(
+                      <div key={appt.id} className="appt-block"
+                        onClick={function(){setSelAppt(isSel?null:appt.id);}}
+                        style={{position:"absolute",top:top,left:3,right:3,height:height,
+                          background:appt.color+"22",border:"1.5px solid "+appt.color+(isSel?"":"44"),
+                          borderRadius:6,padding:"3px 6px",cursor:"pointer",overflow:"hidden",
+                          boxShadow:isSel?"0 0 0 2px "+appt.color:"none",
+                          outline:isNow?"2px solid "+appt.color:"none",
+                          transition:"filter 0.12s,transform 0.1s",zIndex:isSel?5:1}}>
+                        {height>20&&<div style={{fontSize:9.5,fontWeight:700,color:appt.color,
+                          whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",
+                          fontFamily:"'DM Mono',monospace"}}>{appt.start}</div>}
+                        <div style={{fontSize:10,fontWeight:600,color:C.tx,
+                          whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",lineHeight:1.3}}>{appt.pet}</div>
+                        {height>36&&<div style={{fontSize:9.5,color:C.t2,
+                          whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{appt.type}</div>}
+                        {isNow&&<div style={{position:"absolute",top:2,right:4,width:5,height:5,
+                          borderRadius:"50%",background:appt.color,animation:"blink 2s infinite"}}/>}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Appointment detail side panel */}
+      {selData&&(
+        <div style={{width:300,background:C.wh,borderLeft:"1px solid "+C.br,
+          display:"flex",flexDirection:"column",flexShrink:0,animation:"slideUp 0.18s ease",overflow:"hidden"}}>
+          <div style={{padding:"16px 18px",borderBottom:"1px solid "+C.br,display:"flex",
+            alignItems:"center",justifyContent:"space-between"}}>
+            <div>
+              <div style={{fontSize:9,fontWeight:700,color:C.t3,letterSpacing:"0.1em",
+                textTransform:"uppercase",fontFamily:"'DM Mono',monospace",marginBottom:4}}>
+                {selData.day.toUpperCase()+" · "+selData.start}</div>
+              <div style={{fontSize:16,fontWeight:700,color:C.tx,fontFamily:"'Sora',sans-serif"}}>{selData.pet}</div>
+              <div style={{fontSize:12,color:C.t2,marginTop:2}}>{selData.client}</div>
+            </div>
+            <button onClick={function(){setSelAppt(null);}}
+              style={{background:"none",border:"none",fontSize:18,color:C.t3,cursor:"pointer",padding:"2px 6px"}}>✕</button>
+          </div>
+          <div style={{padding:"14px 18px",flex:1,overflowY:"auto"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+              {[["Type",selData.type],["Duration",selData.dur+"m"],["Vet",selData.vet||"TBD"],["Status",selData.status]].map(function(pair){return(
+                <div key={pair[0]} style={{background:C.off,borderRadius:8,padding:"8px 11px"}}>
+                  <div style={{fontSize:9,fontWeight:600,color:C.t3,letterSpacing:"0.06em",
+                    textTransform:"uppercase",fontFamily:"'DM Mono',monospace",marginBottom:3}}>{pair[0]}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:C.tx}}>{pair[1]}</div>
+                </div>
+              );})}
+            </div>
+            {selData.alerts&&selData.alerts.length>0&&(
+              <div style={{background:"#FEF2F2",border:"1px solid #FECACA",borderRadius:8,
+                padding:"9px 12px",marginBottom:14,display:"flex",gap:8}}>
+                <span style={{fontSize:12,flexShrink:0}}>⚠️</span>
+                <div style={{fontSize:11,color:"#991B1B",lineHeight:1.5}}>{selData.alerts.join(" · ")}</div>
+              </div>
+            )}
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {selData.clientId&&(
+                <button onClick={function(){openClientFile(selData.clientId);}}
+                  style={{padding:"10px",borderRadius:8,border:"none",cursor:"pointer",
+                    background:C.acc,color:"#fff",fontSize:12,fontWeight:700,
+                    fontFamily:"'Outfit',sans-serif",display:"flex",alignItems:"center",
+                    justifyContent:"center",gap:6}}>
+                  📋 Open Client File
+                </button>
+              )}
+              <button onClick={function(){onNavigate("vetroom");setSelAppt(null);}}
+                style={{padding:"10px",borderRadius:8,cursor:"pointer",
+                  background:C_VET.sb,color:"#fff",border:"none",
+                  fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif",
+                  display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                🩺 Open in Vet Room
+              </button>
+              <button onClick={function(){showToast("Reminder sent for "+selData.client);setSelAppt(null);}}
+                style={{padding:"10px",borderRadius:8,cursor:"pointer",
+                  background:C.off,color:C.t2,border:"1px solid "+C.br,
+                  fontSize:12,fontWeight:500,fontFamily:"'Outfit',sans-serif"}}>
+                📤 Send Reminder
+              </button>
+              <button onClick={function(){
+                  setAppts(function(prev){return prev.filter(function(a){return a.id!==selData.id;});});
+                  setSelAppt(null);showToast("Appointment removed");}}
+                style={{padding:"10px",borderRadius:8,cursor:"pointer",
+                  background:C.rBg,color:C.er,border:"1px solid "+C.rBr,
+                  fontSize:12,fontWeight:600,fontFamily:"'Outfit',sans-serif"}}>
+                🗑 Cancel Appointment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Appointment Modal */}
+      {showNew&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,0.55)",zIndex:1000,
+          display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={function(){setShowNew(false);}}>
+          <div style={{background:C.wh,borderRadius:14,width:460,maxWidth:"calc(100vw - 32px)",
+            boxShadow:"0 20px 60px rgba(0,0,0,0.28)",overflow:"hidden"}}
+            onClick={function(e){e.stopPropagation();}}>
+            <div style={{padding:"18px 22px",borderBottom:"1px solid "+C.br,display:"flex",
+              alignItems:"center",justifyContent:"space-between"}}>
+              <div style={{fontSize:15,fontWeight:700,color:C.tx,fontFamily:"'Sora',sans-serif"}}>
+                New Appointment</div>
+              <button onClick={function(){setShowNew(false);}}
+                style={{background:"none",border:"none",fontSize:18,color:C.t3,cursor:"pointer"}}>✕</button>
+            </div>
+            <div style={{padding:"18px 22px",display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div>
+                  <span style={lbl}>Client</span>
+                  <select value={newForm.clientId}
+                    onChange={function(e){
+                      var cl=CLIENTS_DB.find(function(c){return c.id===e.target.value;});
+                      setNewForm(function(f){return Object.assign({},f,{clientId:e.target.value,
+                        petId:cl&&cl.pets[0]?cl.pets[0].id:"",});});
+                    }} style={inpSt}>
+                    <option value="">Select client…</option>
+                    {CLIENTS_DB.map(function(c){return <option key={c.id} value={c.id}>{c.name}</option>;})}
+                  </select>
+                </div>
+                <div>
+                  <span style={lbl}>Pet</span>
+                  <select value={newForm.petId}
+                    onChange={function(e){setNewForm(function(f){return Object.assign({},f,{petId:e.target.value});});}}
+                    style={inpSt} disabled={!newForm.clientId}>
+                    <option value="">Select pet…</option>
+                    {newForm.clientId&&(CLIENTS_DB.find(function(c){return c.id===newForm.clientId;})||{pets:[]}).pets.map(function(p){
+                      return <option key={p.id} value={p.id}>{p.icon+" "+p.name}</option>;
+                    })}
+                  </select>
+                </div>
+                <div>
+                  <span style={lbl}>Day</span>
+                  <select value={newForm.date}
+                    onChange={function(e){setNewForm(function(f){return Object.assign({},f,{date:e.target.value});});}}
+                    style={inpSt}>
+                    {WEEK_DAYS.map(function(d,i){return <option key={d} value={d}>{d+" Nov "+WEEK_DATES[i]}</option>;})}
+                  </select>
+                </div>
+                <div>
+                  <span style={lbl}>Time</span>
+                  <input type="time" value={newForm.time}
+                    onChange={function(e){setNewForm(function(f){return Object.assign({},f,{time:e.target.value});});}}
+                    style={inpSt}/>
+                </div>
+                <div>
+                  <span style={lbl}>Duration</span>
+                  <select value={newForm.dur}
+                    onChange={function(e){setNewForm(function(f){return Object.assign({},f,{dur:e.target.value});});}}
+                    style={inpSt}>
+                    {[15,20,30,45,60,90].map(function(d){return <option key={d} value={d}>{d+" min"}</option>;})}
+                  </select>
+                </div>
+                <div>
+                  <span style={lbl}>Vet</span>
+                  <select value={newForm.vetId}
+                    onChange={function(e){setNewForm(function(f){return Object.assign({},f,{vetId:e.target.value});});}}
+                    style={inpSt}>
+                    {VETS.map(function(v){return <option key={v.id} value={v.id}>{v.name}</option>;})}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <span style={lbl}>Visit Type</span>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {VISIT_TYPES.map(function(t){var a=newForm.type===t;return(
+                    <button key={t} onClick={function(){setNewForm(function(f){return Object.assign({},f,{type:t});});}}
+                      style={{padding:"4px 11px",borderRadius:20,fontSize:11,fontWeight:a?600:400,cursor:"pointer",
+                        background:a?C.acc:C.off,color:a?"#fff":C.t2,border:"1px solid "+(a?C.acc:C.br),
+                        fontFamily:"'Outfit',sans-serif"}}>{t}</button>
+                  );})}
+                </div>
+              </div>
+            </div>
+            <div style={{padding:"14px 22px",borderTop:"1px solid "+C.br,display:"flex",
+              justifyContent:"flex-end",gap:10}}>
+              <button onClick={function(){setShowNew(false);}}
+                style={{padding:"9px 18px",background:C.off,color:C.t2,border:"1px solid "+C.br,
+                  borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"'Outfit',sans-serif"}}>Cancel</button>
+              <button onClick={addAppointment}
+                disabled={!newForm.clientId}
+                style={{padding:"9px 22px",background:newForm.clientId?C.acc:"#94A3B8",color:"#fff",
+                  border:"none",borderRadius:8,fontSize:13,fontWeight:700,
+                  cursor:newForm.clientId?"pointer":"not-allowed",fontFamily:"'Outfit',sans-serif"}}>
+                Book Appointment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+</script>
+
+<!-- ═══ SCRIPT 5 · App Router + ReactDOM ═══ -->
+<script type="text/babel">
+var TOUR_STEPS_HUB=[
+  {id:"hub-tour-topbar",      placement:"bottom", title:"Today's Status Bar",        desc:"The top bar shows your name, today's date, total appointments done vs remaining, and a live badge if a patient is currently in the room — click it to jump straight to their file."},
+  {id:"hub-tour-sched-header",placement:"bottom", title:"Today's Schedule",          desc:"The schedule list shows all appointments for today in chronological order. The currently active appointment is highlighted in navy. Completed visits fade out. Click any row to expand it."},
+  {id:"hub-tour-sched-list",  placement:"right",  title:"Appointment Rows",          desc:"Each row shows time, duration, client name, pet, visit type, vet, and current status. 'Now in Room' means the patient is being seen right now. 'Next Up' means arriving soon."},
+  {id:"hub-tour-client-search",placement:"left",  title:"Client Search",             desc:"Search any client instantly by name, phone, or pet name. Results appear as you type — click any result to open their full file. The currently-in-clinic client is always shown at the top."},
+  {id:"hub-tour-messages",    placement:"left",   title:"Messages & Alerts",         desc:"Incoming messages from the vet team appear here — questions about scheduling, procedure updates, and follow-up notes. Reply directly from this panel without switching screens."},
+  {id:"hub-tour-sidebar-nav", placement:"right",  title:"Sidebar Navigation",        desc:"Switch between Reception, Vet Room, and Calendar using the sidebar. Each view is role-specific — Reception manages scheduling and billing, Vet Room handles clinical workflows, Calendar handles bookings."},
+];
+
+function TooltipTourHub({onDone}){
+  var _i=useState(0);var idx=_i[0];var setIdx=_i[1];
+  var _p=useState(null);var pos=_p[0];var setPos=_p[1];
+  var step=TOUR_STEPS_HUB[idx];
+  useEffect(function(){
+    var el=document.getElementById(step.id);
+    if(!el){setPos(null);return;}
+    el.scrollIntoView({block:"nearest",inline:"nearest"});
+    function measure(){var r=el.getBoundingClientRect();setPos({top:r.top,left:r.left,width:r.width,height:r.height,placement:step.placement});}
+    var t=setTimeout(measure,60);
+    window.addEventListener("resize",measure);
+    return function(){clearTimeout(t);window.removeEventListener("resize",measure);};
+  },[idx]);
+  if(!pos)return null;
+  var TW=300,PAD=16;
+  var tLeft=pos.left,tTop=pos.top;
+  if(pos.placement==="bottom"){tTop=pos.top+pos.height+PAD;tLeft=pos.left+(pos.width/2)-(TW/2);}
+  else if(pos.placement==="right"){tLeft=pos.left+pos.width+PAD;tTop=pos.top+(pos.height/2)-80;}
+  else if(pos.placement==="left"){tLeft=pos.left-TW-PAD;tTop=pos.top+(pos.height/2)-80;}
+  else{tTop=pos.top-160-PAD;tLeft=pos.left+(pos.width/2)-(TW/2);}
+  tLeft=Math.max(10,Math.min(tLeft,window.innerWidth-TW-10));
+  tTop=Math.max(10,Math.min(tTop,window.innerHeight-180));
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:9000,pointerEvents:"none"}}>
+      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} xmlns="http://www.w3.org/2000/svg">
+        <defs><mask id="hubTourMask"><rect width="100%" height="100%" fill="white"/><rect x={pos.left-6} y={pos.top-6} width={pos.width+12} height={pos.height+12} rx="10" fill="black"/></mask></defs>
+        <rect width="100%" height="100%" fill="rgba(10,25,47,0.62)" mask="url(#hubTourMask)"/>
+      </svg>
+      <div style={{position:"absolute",left:pos.left-6,top:pos.top-6,width:pos.width+12,height:pos.height+12,borderRadius:10,boxShadow:"0 0 0 3px #2563A8,0 0 0 6px rgba(37,99,168,0.22)",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",left:tLeft,top:tTop,width:TW,background:"#fff",borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,0.22)",padding:"18px 18px 14px",pointerEvents:"all",fontFamily:"'Outfit',sans-serif"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <span style={{fontSize:10,fontWeight:700,color:"#94A3B8",fontFamily:"DM Mono,monospace",letterSpacing:"0.1em",textTransform:"uppercase"}}>{idx+1} / {TOUR_STEPS_HUB.length}</span>
+          <button onClick={onDone} style={{background:"none",border:"none",fontSize:14,color:"#94A3B8",cursor:"pointer",padding:"2px 4px"}}>✕</button>
+        </div>
+        <div style={{display:"flex",gap:5,marginBottom:10}}>
+          {TOUR_STEPS_HUB.map(function(_,i){return <div key={i} style={{width:i===idx?18:6,height:6,borderRadius:99,background:i===idx?"#2563A8":"#E2E7EF",transition:"width 0.2s,background 0.2s"}}/>;}) }
+        </div>
+        <div style={{fontSize:13,fontWeight:700,color:"#0F172A",marginBottom:5,fontFamily:"Sora,sans-serif"}}>{step.title}</div>
+        <div style={{fontSize:12,color:"#475569",lineHeight:1.55,marginBottom:14}}>{step.desc}</div>
+        <div style={{display:"flex",gap:8}}>
+          {idx>0&&<button onClick={function(){setIdx(function(i){return i-1;});setPos(null);}} style={{flex:1,padding:"7px",background:"#F4F6F9",color:"#475569",border:"1px solid #E2E7EF",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}}>← Back</button>}
+          <button onClick={function(){if(idx<TOUR_STEPS_HUB.length-1){setIdx(function(i){return i+1;});setPos(null);}else{onDone();}}} style={{flex:2,padding:"8px",background:"#2563A8",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            {idx<TOUR_STEPS_HUB.length-1?"Next →":"Finish Tour ✓"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  var _view=useState("reception");var view=_view[0];var setView=_view[1];
+  var _staff=useState(STAFF[0]);var activeStaff=_staff[0];var setActiveStaff=_staff[1];
+  var _vet=useState(VETS[0]);var activeVet=_vet[0];var setActiveVet=_vet[1];
+  var _toast=useState(null);var toast=_toast[0];var setToast=_toast[1];
+  var _demo=useState(false);var showDemo=_demo[0];var setShowDemo=_demo[1];
+
+  function showToast(msg){setToast(msg);}
+
+  // Read initial view from sessionStorage (set by client file "Open in Vet Room")
+  useEffect(function(){
+    try{
+      var v=sessionStorage.getItem("vets_view");
+      if(v==="vetroom")setView("vetroom");
+      if(v==="calendar")setView("calendar");
+      sessionStorage.removeItem("vets_view");
+    }catch(e){}
+  },[]);
+
+  return(
+    <div style={{height:"100vh",overflow:"hidden"}}>
+      {view==="reception"&&(
+        <ReceptionView
+          onNavigate={setView}
+          activeStaff={activeStaff}
+          onStaffSwitch={function(s){setActiveStaff(s);showToast("Switched to "+s.name);}}
+          toast={toast}
+          showToast={showToast}
+          onStartDemo={function(){setShowDemo(true);}}/>
+      )}
+      {view==="vetroom"&&(
+        <VetRoomView
+          onNavigate={setView}
+          activeVet={activeVet}
+          onVetSwitch={function(v){setActiveVet(v);showToast("Switched to "+v.name);}}
+          toast={toast}
+          showToast={showToast}
+          onStartDemo={function(){setShowDemo(true);}}/>
+      )}
+      {view==="calendar"&&(
+        <CalendarView
+          onNavigate={setView}
+          activeStaff={activeStaff}
+          onStaffSwitch={function(s){setActiveStaff(s);showToast("Switched to "+s.name);}}
+          toast={toast}
+          showToast={showToast}
+          onStartDemo={function(){setShowDemo(true);}}/>
+      )}
+      {toast&&<HubToast msg={toast} onHide={function(){setToast(null);}}/>}
+      {showDemo&&<TooltipTourHub onDone={function(){setShowDemo(false);}}/>}
+    </div>
+  );
+}
+
+const root=ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>

@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VETS — New Client</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sora:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;overflow:hidden}
+body{font-family:'Outfit',sans-serif;background:#F4F6F9}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px}
+button{cursor:pointer;border:none;outline:none;font-family:'Outfit',sans-serif}
+input,select,textarea{font-family:'Outfit',sans-serif;outline:none}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes checkPop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.2)}100%{transform:scale(1);opacity:1}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+.sb-btn:hover{background:rgba(255,255,255,0.08)!important}
+.field-row input:focus,.field-row select:focus,.field-row textarea:focus{border-color:#2563A8!important;box-shadow:0 0 0 3px rgba(37,99,168,0.1)!important}
+.pill-opt:hover{border-color:#2563A8!important;background:rgba(37,99,168,0.04)!important}
+.upload-zone:hover{border-color:#2563A8!important;background:rgba(37,99,168,0.03)!important}
+.req-err{border-color:#DC2626!important;box-shadow:0 0 0 2px #FEE2E2!important}
+.file-row:hover{background:#F8FAFC!important}
+.step-done{cursor:pointer}
+.step-done:hover{opacity:0.8}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState,useRef,useEffect,useCallback}=React;
+
+const C={
+  sb:"#0D1F35",sbA:"#1C3252",acc:"#2563A8",aLt:"#3B82C4",
+  off:"#F4F6F9",br:"#E2E7EF",wh:"#FFFFFF",
+  tx:"#0F172A",t2:"#475569",t3:"#94A3B8",
+  er:"#DC2626",rBg:"#FEF2F2",rBr:"#FECACA",
+  am:"#D97706",aBg:"#FFFBEB",aBr:"#FDE68A",
+  gn:"#16A34A",gBg:"#F0FDF4",gBr:"#BBF7D0",
+};
+
+const NAV=[
+  {id:"dashboard", icon:"⊞",  label:"Dashboard"},
+  {id:"clients",   icon:"👤", label:"Clients"},
+  {id:"schedule",  icon:"📅", label:"Schedule"},
+  {id:"records",   icon:"📋", label:"Records"},
+  {id:"messages",  icon:"✉️", label:"Messages"},
+  {id:"inventory", icon:"📦", label:"Inventory"},
+  {id:"reports",   icon:"📊", label:"Reports"},
+];
+
+const BREEDS_DOG=["Labrador Retriever","Golden Retriever","French Bulldog","German Shepherd","Bulldog","Poodle","Beagle","Border Collie","Siberian Husky","Dachshund","Chihuahua","Shih Tzu","Boxer","Great Dane","Yorkshire Terrier","Other"];
+const BREEDS_CAT=["Persian","Siamese","Maine Coon","Ragdoll","Bengal","British Shorthair","Abyssinian","Russian Blue","Sphynx","Burmese","Domestic Shorthair","Domestic Longhair","Other"];
+const COAT_COLORS=["Black","White","Brown","Golden","Cream","Gray","Orange","Tabby","Tortoiseshell","Calico","Brindle","Merle","Spotted","Bicolor","Tricolor","Other"];
+const FILE_TYPES=["Vaccination Record","Previous Vet Records","Adoption / Shelter Docs","Insurance Documents","Blood Work / Labs","Other"];
+
+function Toast({msg,onHide,type}){
+  useEffect(function(){var t=setTimeout(onHide,2800);return function(){clearTimeout(t);};},[]);
+  var bg=type==="error"?"#7f1d1d":"#052e16";
+  var col=type==="error"?"#fca5a5":"#4ade80";
+  return(
+    <div style={{position:"fixed",top:18,left:"50%",transform:"translateX(-50%)",
+      zIndex:3000,background:bg,color:col,fontSize:13,fontWeight:500,
+      padding:"11px 22px",borderRadius:10,boxShadow:"0 8px 30px rgba(0,0,0,0.22)",
+      display:"flex",alignItems:"center",gap:9,animation:"slideUp 0.2s ease"}}>
+      {type==="error"?"⚠":"✓"} {msg}
+    </div>
+  );
+}
+
+// ── Stepper ──────────────────────────────────────────────────────────────────
+function Stepper({step,onGoTo}){
+  var steps=["Client Info","Patient","Files","Review"];
+  return(
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:0,marginBottom:32}}>
+      {steps.map(function(label,i){
+        var idx=i+1;
+        var done=step>idx;
+        var active=step===idx;
+        return(
+          <React.Fragment key={idx}>
+            <div className={done?"step-done":""} onClick={done?function(){onGoTo(idx);}:undefined}
+              style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+              <div style={{
+                width:32,height:32,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:done?14:13,fontWeight:700,transition:"all 0.2s",
+                background:done?C.gn:active?C.acc:"#E2E7EF",
+                color:done||active?"#fff":C.t3,
+                boxShadow:active?"0 0 0 3px rgba(37,99,168,0.18)":"none",
+              }}>
+                {done?"✓":idx}
+              </div>
+              <span style={{fontSize:11,fontWeight:active?600:400,color:active?C.acc:done?C.gn:C.t3,
+                letterSpacing:"0.02em",whiteSpace:"nowrap"}}>
+                {label}
+              </span>
+            </div>
+            {i<steps.length-1&&(
+              <div style={{width:60,height:2,marginTop:-16,flexShrink:0,
+                background:step>idx?"linear-gradient(90deg,"+C.gn+","+C.gn+")":
+                           step===idx?"linear-gradient(90deg,"+C.acc+",#E2E7EF)":"#E2E7EF",
+                transition:"background 0.3s"}}/>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Field helpers ─────────────────────────────────────────────────────────────
+function Label({text,required}){
+  return(
+    <div style={{fontSize:12,fontWeight:600,color:C.t2,marginBottom:5,letterSpacing:"0.02em"}}>
+      {text}{required&&<span style={{color:C.er,marginLeft:2}}>*</span>}
+    </div>
+  );
+}
+function FieldInput({label,required,value,onChange,onBlur,placeholder,type,error,half,mono}){
+  var inp={width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+(error?C.er:C.br),
+    fontSize:13,color:C.tx,background:C.wh,transition:"border 0.15s",
+    fontFamily:mono?"'DM Mono',monospace":"'Outfit',sans-serif"};
+  return(
+    <div className="field-row" style={{flex:half?"1":"unset",minWidth:half?"0":"unset"}}>
+      {label&&<Label text={label} required={required}/>}
+      <input className={error?"req-err":""} type={type||"text"} value={value} onChange={onChange}
+        onBlur={onBlur} placeholder={placeholder||""} style={inp}/>
+      {error&&<div style={{fontSize:11,color:C.er,marginTop:3}}>{error}</div>}
+    </div>
+  );
+}
+function FieldSelect({label,required,value,onChange,options,error,half}){
+  return(
+    <div className="field-row" style={{flex:half?"1":"unset",minWidth:half?"0":"unset"}}>
+      {label&&<Label text={label} required={required}/>}
+      <select className={error?"req-err":""} value={value} onChange={onChange}
+        style={{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+(error?C.er:C.br),
+          fontSize:13,color:value?"#0F172A":C.t3,background:C.wh,transition:"border 0.15s",
+          appearance:"none",backgroundImage:"url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394A3B8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E\")",
+          backgroundRepeat:"no-repeat",backgroundPosition:"right 12px center",paddingRight:32}}>
+        <option value="">Select…</option>
+        {options.map(function(o){return <option key={o.value||o} value={o.value||o}>{o.label||o}</option>;})}
+      </select>
+      {error&&<div style={{fontSize:11,color:C.er,marginTop:3}}>{error}</div>}
+    </div>
+  );
+}
+function PillToggle({label,required,options,value,onChange,error}){
+  return(
+    <div className="field-row">
+      {label&&<Label text={label} required={required}/>}
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+        {options.map(function(o){
+          var v=o.value||o; var l=o.label||o; var sel=value===v;
+          return(
+            <button key={v} className="pill-opt" onClick={function(){onChange(v);}
+            } style={{padding:"7px 16px",borderRadius:20,border:"1px solid "+(sel?C.acc:C.br),
+              background:sel?C.acc:"transparent",color:sel?C.wh:C.t2,
+              fontSize:13,fontWeight:sel?600:400,transition:"all 0.15s"}}>
+              {l}
+            </button>
+          );
+        })}
+      </div>
+      {error&&<div style={{fontSize:11,color:C.er,marginTop:6}}>{error}</div>}
+    </div>
+  );
+}
+
+// ── Step 1 — Client Info ──────────────────────────────────────────────────────
+function Step1({data,setData,errors,setErrors}){
+  function upd(f){return function(e){setData(function(d){return Object.assign({},d,{[f]:e.target.value});});setErrors(function(er){return Object.assign({},er,{[f]:null});});};}
+  function blr(f){return function(){if(!data[f])setErrors(function(er){return Object.assign({},er,{[f]:"Required"});});};}
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:18}}>
+      <div style={{display:"flex",gap:14}}>
+        <FieldInput label="First Name" required value={data.firstName} onChange={upd("firstName")}
+          onBlur={blr("firstName")} error={errors.firstName} half/>
+        <FieldInput label="Last Name" required value={data.lastName} onChange={upd("lastName")}
+          onBlur={blr("lastName")} error={errors.lastName} half/>
+      </div>
+      <div style={{display:"flex",gap:14}}>
+        <FieldInput label="Phone" required value={data.phone} onChange={upd("phone")}
+          onBlur={blr("phone")} placeholder="05X-XXX-XXXX" error={errors.phone} half mono/>
+        <FieldInput label="Email" value={data.email} onChange={upd("email")}
+          placeholder="email@example.com" type="email" half/>
+      </div>
+      <FieldInput label="Address" value={data.address} onChange={upd("address")}
+        placeholder="Street, City"/>
+      <div style={{padding:"12px 14px",background:"rgba(37,99,168,0.04)",borderRadius:10,
+        border:"1px solid rgba(37,99,168,0.12)",fontSize:12,color:C.t2,display:"flex",alignItems:"center",gap:8}}>
+        <span style={{fontSize:16}}>ℹ️</span>
+        Client ID and registration date will be assigned automatically on save.
+      </div>
+    </div>
+  );
+}
+
+// ── Step 2 — Patient Info ─────────────────────────────────────────────────────
+function Step2({data,setData,errors,setErrors}){
+  function upd(f){return function(e){var v=e.target?e.target.value:e;setData(function(d){return Object.assign({},d,{[f]:v});});setErrors(function(er){return Object.assign({},er,{[f]:null});});};}
+  function blr(f){return function(){if(!data[f])setErrors(function(er){return Object.assign({},er,{[f]:"Required"});});};}
+
+  var breeds=data.species==="cat"?BREEDS_CAT:data.species==="dog"?BREEDS_DOG:[];
+  var speciesIcon=data.species==="dog"?"🐶":data.species==="cat"?"🐱":"🐾";
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:18}}>
+
+      {/* Species */}
+      <PillToggle label="Species" required
+        options={[{value:"dog",label:"🐶 Dog"},{value:"cat",label:"🐱 Cat"},{value:"other",label:"🐾 Other"}]}
+        value={data.species} onChange={upd("species")} error={errors.species}/>
+
+      {/* Name */}
+      <FieldInput label="Pet Name" required value={data.petName} onChange={upd("petName")}
+        onBlur={blr("petName")} error={errors.petName} placeholder={"e.g. "+speciesIcon+" Buddy"}/>
+
+      {/* Breed + Coat */}
+      <div style={{display:"flex",gap:14}}>
+        {breeds.length>0
+          ?<FieldSelect label="Breed" required value={data.breed} onChange={upd("breed")}
+              options={breeds} error={errors.breed} half/>
+          :<FieldInput label="Breed / Type" value={data.breed} onChange={upd("breed")} half/>
+        }
+        <FieldSelect label="Coat Color" value={data.coat} onChange={upd("coat")}
+          options={COAT_COLORS} half/>
+      </div>
+
+      {/* DOB */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <Label text="Date of Birth" required/>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div className="field-row" style={{flex:1}}>
+            <input type="date" value={data.dob} onChange={upd("dob")}
+              disabled={data.dobUnknown}
+              style={{width:"100%",padding:"9px 12px",borderRadius:8,
+                border:"1px solid "+(errors.dob?C.er:C.br),fontSize:13,color:C.tx,
+                background:data.dobUnknown?"#F8FAFC":C.wh,
+                opacity:data.dobUnknown?0.5:1}}/>
+            {errors.dob&&<div style={{fontSize:11,color:C.er,marginTop:3}}>{errors.dob}</div>}
+          </div>
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.t2,
+            cursor:"pointer",flexShrink:0,paddingTop:errors.dob?0:2}}>
+            <input type="checkbox" checked={data.dobUnknown} onChange={function(e){
+              setData(function(d){return Object.assign({},d,{dobUnknown:e.target.checked,dob:""});});
+            }} style={{accentColor:C.acc,width:14,height:14}}/>
+            Approximate age
+          </label>
+        </div>
+        {data.dobUnknown&&(
+          <div style={{display:"flex",gap:10,marginTop:2}}>
+            <FieldInput placeholder="Years" value={data.ageY} onChange={function(e){setData(function(d){return Object.assign({},d,{ageY:e.target.value});});}} half/>
+            <FieldInput placeholder="Months" value={data.ageM} onChange={function(e){setData(function(d){return Object.assign({},d,{ageM:e.target.value});});}} half/>
+          </div>
+        )}
+      </div>
+
+      {/* Gender + Neutered */}
+      <div style={{display:"flex",gap:14}}>
+        <PillToggle label="Gender" required
+          options={[{value:"male",label:"♂ Male"},{value:"female",label:"♀ Female"}]}
+          value={data.gender} onChange={upd("gender")} error={errors.gender}/>
+        <PillToggle label="Neutered / Spayed"
+          options={[{value:"yes",label:"Yes"},{value:"no",label:"No"},{value:"unknown",label:"Unknown"}]}
+          value={data.neutered} onChange={upd("neutered")}/>
+      </div>
+
+      {/* Weight + Microchip */}
+      <div style={{display:"flex",gap:14}}>
+        <FieldInput label="Weight (kg)" value={data.weight} onChange={upd("weight")}
+          placeholder="e.g. 12.5" type="number" half mono/>
+        <FieldInput label="Microchip ID" value={data.chip} onChange={upd("chip")}
+          placeholder="15-digit number" half mono/>
+      </div>
+
+      {/* Insurance */}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        <PillToggle label="Pet Insurance"
+          options={[{value:"yes",label:"✓ Insured"},{value:"no",label:"✗ Not Insured"}]}
+          value={data.hasInsurance} onChange={upd("hasInsurance")}/>
+        {data.hasInsurance==="yes"&&(
+          <div style={{display:"flex",gap:14,paddingLeft:4,animation:"slideUp 0.15s ease"}}>
+            <FieldInput label="Insurance Provider" value={data.insuranceProvider}
+              onChange={upd("insuranceProvider")} placeholder="e.g. Clal Bituch" half/>
+            <FieldInput label="Policy / ID" value={data.insuranceId}
+              onChange={upd("insuranceId")} placeholder="Policy number" half mono/>
+          </div>
+        )}
+      </div>
+
+      {/* Alerts */}
+      <div className="field-row">
+        <Label text="Known Allergies / Warnings"/>
+        <textarea value={data.alerts} onChange={upd("alerts")}
+          placeholder="e.g. Penicillin allergy, High bite risk — leave blank if none"
+          style={{width:"100%",padding:"9px 12px",borderRadius:8,border:"1px solid "+C.br,
+            fontSize:13,color:C.tx,background:C.wh,resize:"vertical",minHeight:72,lineHeight:1.5}}/>
+        <div style={{fontSize:11,color:C.t3,marginTop:4}}>
+          Each line becomes a separate alert shown in red in the patient's sidebar.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Step 3 — Files ────────────────────────────────────────────────────────────
+function Step3({files,setFiles}){
+  var dragRef=useRef(false);
+  var _drag=useState(false);var dragOver=_drag[0];var setDragOver=_drag[1];
+
+  function addFiles(newFiles){
+    var arr=Array.from(newFiles).map(function(f,i){
+      return{id:Date.now()+i,name:f.name,size:f.size,type:""};
+    });
+    setFiles(function(prev){return prev.concat(arr);});
+  }
+  function removeFile(id){setFiles(function(prev){return prev.filter(function(f){return f.id!==id;});});}
+  function setType(id,t){setFiles(function(prev){return prev.map(function(f){return f.id===id?Object.assign({},f,{type:t}):f;});});}
+
+  function fmtSize(b){if(b<1024)return b+"B";if(b<1048576)return (b/1024).toFixed(0)+"KB";return (b/1048576).toFixed(1)+"MB";}
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      {/* Drop zone */}
+      <div className="upload-zone"
+        onDragOver={function(e){e.preventDefault();setDragOver(true);}}
+        onDragLeave={function(){setDragOver(false);}}
+        onDrop={function(e){e.preventDefault();setDragOver(false);addFiles(e.dataTransfer.files);}}
+        style={{border:"2px dashed "+(dragOver?C.acc:C.br),borderRadius:12,padding:"32px 20px",
+          textAlign:"center",background:dragOver?"rgba(37,99,168,0.04)":C.wh,
+          transition:"all 0.15s",cursor:"pointer"}}
+        onClick={function(){document.getElementById("file-input").click();}}>
+        <div style={{fontSize:32,marginBottom:8}}>📎</div>
+        <div style={{fontSize:14,fontWeight:600,color:C.t2,marginBottom:4}}>
+          Drop files here or <span style={{color:C.acc}}>browse</span>
+        </div>
+        <div style={{fontSize:12,color:C.t3}}>PDF, JPG, PNG — any size</div>
+        <input id="file-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"
+          style={{display:"none"}} onChange={function(e){addFiles(e.target.files);e.target.value="";}}/>
+      </div>
+
+      {/* File list */}
+      {files.length>0&&(
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {files.map(function(f){
+            var ext=f.name.split(".").pop().toUpperCase();
+            var extColor=ext==="PDF"?C.er:ext==="PNG"||ext==="JPG"?"#7C3AED":C.acc;
+            return(
+              <div key={f.id} className="file-row" style={{display:"flex",alignItems:"center",gap:10,
+                padding:"9px 12px",background:C.wh,borderRadius:10,border:"1px solid "+C.br,
+                transition:"background 0.15s"}}>
+                <div style={{width:30,height:30,borderRadius:6,background:"rgba(37,99,168,0.07)",
+                  display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <span style={{fontSize:9,fontWeight:700,fontFamily:"'DM Mono',monospace",color:extColor}}>{ext}</span>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:500,color:C.tx,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                    {f.name}
+                  </div>
+                  <div style={{fontSize:11,color:C.t3}}>{fmtSize(f.size)}</div>
+                </div>
+                <select value={f.type} onChange={function(e){setType(f.id,e.target.value);}}
+                  style={{fontSize:11,color:f.type?C.t2:C.t3,border:"1px solid "+C.br,borderRadius:6,
+                    padding:"4px 8px",background:C.wh,maxWidth:170}}>
+                  <option value="">Tag file type…</option>
+                  {FILE_TYPES.map(function(t){return <option key={t} value={t}>{t}</option>;})}
+                </select>
+                <button onClick={function(){removeFile(f.id);}}
+                  style={{width:22,height:22,borderRadius:"50%",background:"transparent",
+                    color:C.t3,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",
+                    flexShrink:0,transition:"all 0.15s"}}
+                  onMouseEnter={function(e){e.currentTarget.style.background=C.rBg;e.currentTarget.style.color=C.er;}}
+                  onMouseLeave={function(e){e.currentTarget.style.background="transparent";e.currentTarget.style.color=C.t3;}}>
+                  ×
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {files.length===0&&(
+        <div style={{fontSize:12,color:C.t3,textAlign:"center",padding:"8px 0"}}>
+          No files uploaded yet — you can skip this step and add files later from the Documents tab.
+        </div>
+      )}
+
+      <div style={{padding:"10px 14px",background:C.aBg,borderRadius:8,border:"1px solid "+C.aBr,
+        fontSize:12,color:C.am,display:"flex",alignItems:"center",gap:8}}>
+        <span>💡</span>
+        This step is optional. All uploaded files will appear in the patient's Documents tab.
+      </div>
+    </div>
+  );
+}
+
+// ── Step 4 — Review ───────────────────────────────────────────────────────────
+function Step4({clientData,petData,files}){
+  var petIcon=petData.species==="dog"?"🐶":petData.species==="cat"?"🐱":"🐾";
+  var age="";
+  if(petData.dob){
+    var d=new Date(petData.dob);var now=new Date();
+    var yrs=now.getFullYear()-d.getFullYear();
+    age=yrs+"Y";
+  }else if(petData.ageY||petData.ageM){
+    age=(petData.ageY?petData.ageY+"Y ":"")+(petData.ageM?petData.ageM+"M":"");
+  }
+  var alertLines=(petData.alerts||"").split("\n").map(function(l){return l.trim();}).filter(Boolean);
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      <div style={{fontSize:12,color:C.t2,marginBottom:4,fontWeight:500,letterSpacing:"0.04em",textTransform:"uppercase"}}>
+        Everything look right?
+      </div>
+
+      {/* Client card */}
+      <div style={{background:C.wh,borderRadius:12,border:"1px solid "+C.br,overflow:"hidden"}}>
+        <div style={{padding:"10px 16px",background:"rgba(37,99,168,0.04)",borderBottom:"1px solid "+C.br,
+          fontSize:11,fontWeight:700,color:C.acc,letterSpacing:"0.08em",textTransform:"uppercase"}}>
+          Client
+        </div>
+        <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:6}}>
+          <div style={{fontSize:15,fontWeight:700,color:C.tx,fontFamily:"'Sora',sans-serif"}}>
+            {clientData.firstName} {clientData.lastName}
+          </div>
+          <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+            {clientData.phone&&<span style={{fontSize:12,color:C.t2}}>📞 {clientData.phone}</span>}
+            {clientData.email&&<span style={{fontSize:12,color:C.t2}}>✉ {clientData.email}</span>}
+          </div>
+          {clientData.address&&<div style={{fontSize:12,color:C.t2}}>📍 {clientData.address}</div>}
+        </div>
+      </div>
+
+      {/* Pet card */}
+      <div style={{background:C.wh,borderRadius:12,border:"1px solid "+C.br,overflow:"hidden"}}>
+        <div style={{padding:"10px 16px",background:"rgba(37,99,168,0.04)",borderBottom:"1px solid "+C.br,
+          fontSize:11,fontWeight:700,color:C.acc,letterSpacing:"0.08em",textTransform:"uppercase"}}>
+          Patient
+        </div>
+        <div style={{padding:"14px 16px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <div style={{width:40,height:40,borderRadius:10,background:"rgba(37,99,168,0.08)",
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>
+              {petIcon}
+            </div>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:C.tx,fontFamily:"'Sora',sans-serif"}}>
+                {petData.petName||<span style={{color:C.t3,fontStyle:"italic"}}>Unnamed</span>}
+              </div>
+              <div style={{fontSize:12,color:C.t2}}>{petData.breed||"—"}</div>
+            </div>
+            {petData.hasInsurance==="yes"&&(
+              <div style={{marginLeft:"auto",fontSize:11,fontWeight:600,color:C.gn,
+                background:C.gBg,border:"1px solid "+C.gBr,borderRadius:20,padding:"3px 10px"}}>
+                ✓ Insured
+              </div>
+            )}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"8px 14px"}}>
+            {[
+              ["Age",       age||"—"],
+              ["Gender",    petData.gender||"—"],
+              ["Neutered",  petData.neutered||"—"],
+              ["Weight",    petData.weight?petData.weight+" kg":"—"],
+              ["Coat",      petData.coat||"—"],
+              ["Microchip", petData.chip||"—"],
+            ].map(function(item){
+              return(
+                <div key={item[0]}>
+                  <div style={{fontSize:10,fontWeight:600,color:C.t3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{item[0]}</div>
+                  <div style={{fontSize:12,fontWeight:500,color:item[1]==="—"?C.t3:C.tx,
+                    fontFamily:item[0]==="Microchip"||item[0]==="Weight"?"'DM Mono',monospace":"inherit"}}>
+                    {item[1]}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {alertLines.length>0&&(
+            <div style={{marginTop:12,display:"flex",flexDirection:"column",gap:4}}>
+              {alertLines.map(function(a,i){
+                return(
+                  <div key={i} style={{fontSize:12,color:C.er,background:C.rBg,
+                    borderLeft:"3px solid "+C.er,borderRadius:"0 6px 6px 0",padding:"5px 10px",fontWeight:500}}>
+                    ⚠ {a}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Files */}
+      {files.length>0&&(
+        <div style={{background:C.wh,borderRadius:12,border:"1px solid "+C.br,overflow:"hidden"}}>
+          <div style={{padding:"10px 16px",background:"rgba(37,99,168,0.04)",borderBottom:"1px solid "+C.br,
+            fontSize:11,fontWeight:700,color:C.acc,letterSpacing:"0.08em",textTransform:"uppercase"}}>
+            Files ({files.length})
+          </div>
+          <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:6}}>
+            {files.map(function(f){
+              return(
+                <div key={f.id} style={{display:"flex",alignItems:"center",gap:8,fontSize:12,color:C.t2}}>
+                  <span>📄</span>
+                  <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.name}</span>
+                  {f.type&&<span style={{fontSize:11,color:C.acc,background:"rgba(37,99,168,0.07)",
+                    borderRadius:10,padding:"2px 8px",flexShrink:0}}>{f.type}</span>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Confirmation screen ───────────────────────────────────────────────────────
+function Confirmation({petName,petIcon,onSchedule,onOpenFile}){
+  return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
+      padding:"20px 0 10px",gap:20,animation:"fadeIn 0.3s ease"}}>
+      <div style={{width:80,height:80,borderRadius:"50%",background:C.gBg,
+        border:"3px solid "+C.gBr,display:"flex",alignItems:"center",justifyContent:"center",
+        fontSize:38,animation:"checkPop 0.4s ease forwards"}}>
+        ✓
+      </div>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontSize:22,fontWeight:700,color:C.tx,fontFamily:"'Sora',sans-serif",marginBottom:6}}>
+          {petIcon} {petName} is registered!
+        </div>
+        <div style={{fontSize:14,color:C.t2}}>
+          Client file created successfully. What would you like to do next?
+        </div>
+      </div>
+      <div style={{display:"flex",gap:12,marginTop:4}}>
+        <button onClick={onSchedule}
+          style={{padding:"12px 24px",borderRadius:10,border:"1px solid "+C.acc,
+            background:C.wh,color:C.acc,fontSize:14,fontWeight:600,
+            display:"flex",alignItems:"center",gap:8,transition:"all 0.15s"}}
+          onMouseEnter={function(e){e.currentTarget.style.background="rgba(37,99,168,0.05)";}}
+          onMouseLeave={function(e){e.currentTarget.style.background=C.wh;}}>
+          📅 Schedule Appointment
+        </button>
+        <button onClick={onOpenFile}
+          style={{padding:"12px 24px",borderRadius:10,border:"none",
+            background:C.acc,color:C.wh,fontSize:14,fontWeight:600,
+            boxShadow:"0 3px 12px rgba(37,99,168,0.35)",
+            display:"flex",alignItems:"center",gap:8,transition:"all 0.15s"}}
+          onMouseEnter={function(e){e.currentTarget.style.boxShadow="0 6px 20px rgba(37,99,168,0.45)";}}
+          onMouseLeave={function(e){e.currentTarget.style.boxShadow="0 3px 12px rgba(37,99,168,0.35)";}}>
+          Open Client File →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+var TOUR_STEPS_NEWCLIENT=[
+  {id:"nc-tour-header",   placement:"bottom", title:"New Client Registration",    desc:"This page is a 4-step wizard to register a new client and their pet. It's designed for speed — receptionists fill it in at the front desk in under 2 minutes."},
+  {id:"nc-tour-stepper",  placement:"bottom", title:"Progress Stepper",           desc:"Shows which of the 4 steps you're on: Client Info → Patient Details → Files → Review. Completed steps turn green and become clickable — you can jump back to fix anything before confirming."},
+  {id:"nc-tour-form",     placement:"right",  title:"The Form Fields",            desc:"Only required fields are marked. Everything else is optional to keep the flow fast. Fields validate on blur — errors appear without blocking your typing."},
+  {id:"nc-tour-continue", placement:"top",    title:"Continue Button",            desc:"Moves to the next step after validating required fields. On the last step (Review), this becomes 'Create Client' — clicking it registers the client in the system."},
+];
+
+function TooltipTourNewClient({onDone}){
+  var _i=useState(0);var idx=_i[0];var setIdx=_i[1];
+  var _p=useState(null);var pos=_p[0];var setPos=_p[1];
+  var step=TOUR_STEPS_NEWCLIENT[idx];
+  useEffect(function(){
+    var el=document.getElementById(step.id);
+    if(!el){setPos(null);return;}
+    el.scrollIntoView({block:"nearest",inline:"nearest"});
+    function measure(){var r=el.getBoundingClientRect();setPos({top:r.top,left:r.left,width:r.width,height:r.height,placement:step.placement});}
+    var t=setTimeout(measure,60);
+    window.addEventListener("resize",measure);
+    return function(){clearTimeout(t);window.removeEventListener("resize",measure);};
+  },[idx]);
+  if(!pos)return null;
+  var TW=300,PAD=16;
+  var tLeft=pos.left,tTop=pos.top;
+  if(pos.placement==="bottom"){tTop=pos.top+pos.height+PAD;tLeft=pos.left+(pos.width/2)-(TW/2);}
+  else if(pos.placement==="right"){tLeft=pos.left+pos.width+PAD;tTop=pos.top+(pos.height/2)-80;}
+  else if(pos.placement==="left"){tLeft=pos.left-TW-PAD;tTop=pos.top+(pos.height/2)-80;}
+  else{tTop=pos.top-160-PAD;tLeft=pos.left+(pos.width/2)-(TW/2);}
+  tLeft=Math.max(10,Math.min(tLeft,window.innerWidth-TW-10));
+  tTop=Math.max(10,Math.min(tTop,window.innerHeight-180));
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:9000,pointerEvents:"none"}}>
+      <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none"}} xmlns="http://www.w3.org/2000/svg">
+        <defs><mask id="ncTourMask"><rect width="100%" height="100%" fill="white"/><rect x={pos.left-6} y={pos.top-6} width={pos.width+12} height={pos.height+12} rx="10" fill="black"/></mask></defs>
+        <rect width="100%" height="100%" fill="rgba(10,25,47,0.62)" mask="url(#ncTourMask)"/>
+      </svg>
+      <div style={{position:"absolute",left:pos.left-6,top:pos.top-6,width:pos.width+12,height:pos.height+12,borderRadius:10,boxShadow:"0 0 0 3px #2563A8,0 0 0 6px rgba(37,99,168,0.22)",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",left:tLeft,top:tTop,width:TW,background:"#fff",borderRadius:14,boxShadow:"0 8px 32px rgba(0,0,0,0.22)",padding:"18px 18px 14px",pointerEvents:"all",fontFamily:"'Outfit',sans-serif"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+          <span style={{fontSize:10,fontWeight:700,color:"#94A3B8",fontFamily:"DM Mono,monospace",letterSpacing:"0.1em",textTransform:"uppercase"}}>{idx+1} / {TOUR_STEPS_NEWCLIENT.length}</span>
+          <button onClick={onDone} style={{background:"none",border:"none",fontSize:14,color:"#94A3B8",cursor:"pointer",padding:"2px 4px"}}>✕</button>
+        </div>
+        <div style={{display:"flex",gap:5,marginBottom:10}}>
+          {TOUR_STEPS_NEWCLIENT.map(function(_,i){return <div key={i} style={{width:i===idx?18:6,height:6,borderRadius:99,background:i===idx?"#2563A8":"#E2E7EF",transition:"width 0.2s,background 0.2s"}}/>;}) }
+        </div>
+        <div style={{fontSize:13,fontWeight:700,color:"#0F172A",marginBottom:5,fontFamily:"Sora,sans-serif"}}>{step.title}</div>
+        <div style={{fontSize:12,color:"#475569",lineHeight:1.55,marginBottom:14}}>{step.desc}</div>
+        <div style={{display:"flex",gap:8}}>
+          {idx>0&&<button onClick={function(){setIdx(function(i){return i-1;});setPos(null);}} style={{flex:1,padding:"7px",background:"#F4F6F9",color:"#475569",border:"1px solid #E2E7EF",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer"}}>← Back</button>}
+          <button onClick={function(){if(idx<TOUR_STEPS_NEWCLIENT.length-1){setIdx(function(i){return i+1;});setPos(null);}else{onDone();}}} style={{flex:2,padding:"8px",background:"#2563A8",color:"#fff",border:"none",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+            {idx<TOUR_STEPS_NEWCLIENT.length-1?"Next →":"Finish Tour ✓"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  var _s=useState(1);var step=_s[0];var setStep=_s[1];
+  var _done=useState(false);var done=_done[0];var setDone=_done[1];
+  var _toast=useState(null);var toast=_toast[0];var setToast=_toast[1];
+  var _demo=useState(false);var showDemo=_demo[0];var setShowDemo=_demo[1];
+
+  // Step 1 data
+  var _c=useState({firstName:"",lastName:"",phone:"",email:"",address:""});
+  var clientData=_c[0];var setClientData=_c[1];
+  var _ce=useState({});var clientErrors=_ce[0];var setClientErrors=_ce[1];
+
+  // Step 2 data
+  var _p=useState({
+    species:"",petName:"",breed:"",coat:"",dob:"",dobUnknown:false,ageY:"",ageM:"",
+    gender:"",neutered:"",weight:"",chip:"",hasInsurance:"no",insuranceProvider:"",
+    insuranceId:"",alerts:""
+  });
+  var petData=_p[0];var setPetData=_p[1];
+  var _pe=useState({});var petErrors=_pe[0];var setPetErrors=_pe[1];
+
+  // Step 3
+  var _f=useState([]);var files=_f[0];var setFiles=_f[1];
+
+  function validateStep1(){
+    var errs={};
+    if(!clientData.firstName.trim())errs.firstName="Required";
+    if(!clientData.lastName.trim())errs.lastName="Required";
+    if(!clientData.phone.trim())errs.phone="Required";
+    setClientErrors(errs);
+    return Object.keys(errs).length===0;
+  }
+  function validateStep2(){
+    var errs={};
+    if(!petData.species)errs.species="Select a species";
+    if(!petData.petName.trim())errs.petName="Required";
+    if(!petData.gender)errs.gender="Required";
+    if(!petData.dob&&!petData.dobUnknown)errs.dob="Required";
+    if((petData.species==="dog"||petData.species==="cat")&&!petData.breed)errs.breed="Required";
+    setPetErrors(errs);
+    return Object.keys(errs).length===0;
+  }
+
+  function next(){
+    if(step===1){if(!validateStep1())return;}
+    if(step===2){if(!validateStep2())return;}
+    if(step===4){setDone(true);return;}
+    setStep(function(s){return s+1;});
+  }
+  function back(){setStep(function(s){return s-1;});}
+  function goTo(s){if(s<step)setStep(s);}
+
+  var petIcon=petData.species==="dog"?"🐶":petData.species==="cat"?"🐱":"🐾";
+  var petName=petData.petName||"Patient";
+
+  return(
+    <div style={{display:"flex",height:"100%",overflow:"hidden"}}>
+
+      {/* ── Sidebar ── */}
+      <aside style={{width:216,background:C.sb,display:"flex",flexDirection:"column",
+        flexShrink:0,position:"relative",overflow:"hidden",zIndex:10}}>
+        <div style={{position:"absolute",inset:0,
+          background:"radial-gradient(ellipse at 20% 10%,rgba(37,99,168,0.12) 0%,transparent 55%)",
+          pointerEvents:"none"}}/>
+        {/* Logo */}
+        <div style={{padding:"20px 20px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <div style={{width:34,height:34,borderRadius:9,background:"linear-gradient(135deg,#2563A8,#3B82C4)",
+              display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,
+              boxShadow:"0 2px 8px rgba(37,99,168,0.4)"}}>🐾</div>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:"#fff",fontFamily:"'Sora',sans-serif",letterSpacing:"0.04em"}}>VETS</div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,0.4)",letterSpacing:"0.12em",textTransform:"uppercase"}}>Clinic System</div>
+            </div>
+          </div>
+        </div>
+        {/* Nav */}
+        <nav style={{padding:"10px",flex:1,display:"flex",flexDirection:"column",gap:2}}>
+          {NAV.map(function(item){
+            var on=item.id==="clients";
+            return(
+              <button key={item.id} className="sb-btn"
+                onClick={function(){if(item.id==="dashboard")window.location.href="vets-hub.html";}}
+                style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",
+                  borderRadius:9,border:"none",width:"100%",textAlign:"left",
+                  background:on?"rgba(255,255,255,0.1)":"transparent",
+                  color:on?"#fff":"rgba(255,255,255,0.45)",
+                  fontSize:13,fontWeight:on?600:400,transition:"all 0.15s",cursor:"pointer"}}>
+                <span style={{fontSize:15,width:20,textAlign:"center"}}>{item.icon}</span>
+                <span>{item.label}</span>
+                {on&&<div style={{marginLeft:"auto",width:5,height:5,borderRadius:"50%",background:C.aLt}}/>}
+              </button>
+            );
+          })}
+        </nav>
+        {/* Staff */}
+        <div style={{padding:"10px 14px 4px",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+            <div style={{width:34,height:34,borderRadius:"50%",background:"linear-gradient(135deg,#2563A8,#3B82C4)",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:12,fontWeight:700,color:"#fff",flexShrink:0}}>MC</div>
+            <div style={{minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:600,color:"rgba(255,255,255,0.85)",
+                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>Maya Cohen</div>
+              <div style={{fontSize:10,color:"rgba(255,255,255,0.4)"}}>Receptionist</div>
+            </div>
+          </div>
+          <button className="sb-btn" onClick={function(){setShowDemo(true);}}
+            style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,fontSize:12,
+              cursor:"pointer",border:"1px solid rgba(99,179,237,0.25)",width:"100%",marginBottom:4,
+              fontFamily:"'Outfit',sans-serif",background:"rgba(99,179,237,0.08)",color:"rgba(147,210,255,0.9)"}}>
+            <span style={{width:17,textAlign:"center",flexShrink:0,fontSize:13}}>▶</span>Start Demo
+          </button>
+          <button className="sb-btn" onClick={function(){window.location.href="vets-login.html";}}
+            style={{display:"flex",alignItems:"center",gap:9,padding:"9px 11px",borderRadius:8,fontSize:12,
+              cursor:"pointer",border:"none",width:"100%",marginBottom:6,
+              fontFamily:"'Outfit',sans-serif",background:"transparent",color:"rgba(255,255,255,0.28)"}}>
+            <span style={{width:17,textAlign:"center",flexShrink:0}}>↩</span>Sign Out
+          </button>
+        </div>
+      </aside>
+
+      {/* ── Main ── */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        {/* Header */}
+        <div id="nc-tour-header" style={{background:C.wh,borderBottom:"1px solid "+C.br,padding:"0 28px",
+          height:58,display:"flex",alignItems:"center",gap:12,flexShrink:0,
+          boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
+          <button onClick={function(){window.location.href="vets-reception.html";}}
+            style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",borderRadius:8,
+              border:"1px solid "+C.br,background:"transparent",fontSize:13,color:C.t2,
+              transition:"all 0.15s"}}
+            onMouseEnter={function(e){e.currentTarget.style.background=C.off;}}
+            onMouseLeave={function(e){e.currentTarget.style.background="transparent";}}>
+            ← Back
+          </button>
+          <div style={{width:1,height:20,background:C.br}}/>
+          <div>
+            <div style={{fontSize:15,fontWeight:700,color:C.tx,fontFamily:"'Sora',sans-serif"}}>
+              {done?"Client Registered":"New Client Registration"}
+            </div>
+            {!done&&<div style={{fontSize:11,color:C.t3}}>Step {step} of 4</div>}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{flex:1,overflowY:"auto",padding:"32px 28px"}}>
+          <div style={{maxWidth:620,margin:"0 auto"}}>
+
+            {done?(
+              <div style={{background:C.wh,borderRadius:16,padding:"40px 40px",
+                boxShadow:"0 2px 16px rgba(0,0,0,0.06)",border:"1px solid "+C.br}}>
+                <Confirmation petName={petName} petIcon={petIcon}
+                  onSchedule={function(){
+                    try{
+                      var fullName=(clientData.firstName+" "+clientData.lastName).trim();
+                      sessionStorage.setItem("vets_calClient",fullName);
+                      sessionStorage.setItem("vets_newApptClient",JSON.stringify({
+                        name:fullName,phone:clientData.phone,email:clientData.email,
+                        petName:petName,petIcon:petIcon,petSpecies:petData.species,petBreed:petData.breed,
+                        isNew:true
+                      }));
+                    }catch(e){}
+                    window.location.href="vets-calendar.html";
+                  }}
+                  onOpenFile={function(){window.location.href="vets-client-file_8.html";}}/>
+              </div>
+            ):(
+              <>
+                <div id="nc-tour-stepper"><Stepper step={step} onGoTo={goTo}/></div>
+
+                <div id="nc-tour-form" style={{background:C.wh,borderRadius:16,padding:"32px 32px",
+                  boxShadow:"0 2px 16px rgba(0,0,0,0.06)",border:"1px solid "+C.br,
+                  animation:"slideUp 0.2s ease"}}>
+
+                  {/* Step title */}
+                  <div style={{marginBottom:24}}>
+                    <div style={{fontSize:18,fontWeight:700,color:C.tx,fontFamily:"'Sora',sans-serif",marginBottom:4}}>
+                      {step===1&&"Client Information"}
+                      {step===2&&"Patient Details"}
+                      {step===3&&"Upload Files"}
+                      {step===4&&"Review & Confirm"}
+                    </div>
+                    <div style={{fontSize:13,color:C.t3}}>
+                      {step===1&&"Basic contact info for the pet owner."}
+                      {step===2&&"Tell us about the patient."}
+                      {step===3&&"Upload any existing records — vaccination cards, previous vet notes, etc."}
+                      {step===4&&"Check everything before creating the record."}
+                    </div>
+                  </div>
+
+                  {/* Step content */}
+                  {step===1&&<Step1 data={clientData} setData={setClientData} errors={clientErrors} setErrors={setClientErrors}/>}
+                  {step===2&&<Step2 data={petData} setData={setPetData} errors={petErrors} setErrors={setPetErrors}/>}
+                  {step===3&&<Step3 files={files} setFiles={setFiles}/>}
+                  {step===4&&<Step4 clientData={clientData} petData={petData} files={files}/>}
+
+                  {/* Navigation */}
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:28,
+                    paddingTop:20,borderTop:"1px solid "+C.br}}>
+                    <div>
+                      {step>1&&(
+                        <button onClick={back}
+                          style={{padding:"9px 20px",borderRadius:8,border:"1px solid "+C.br,
+                            background:"transparent",color:C.t2,fontSize:13,fontWeight:500,
+                            transition:"all 0.15s"}}
+                          onMouseEnter={function(e){e.currentTarget.style.background=C.off;}}
+                          onMouseLeave={function(e){e.currentTarget.style.background="transparent";}}>
+                          ← Back
+                        </button>
+                      )}
+                    </div>
+                    <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                      {step===3&&(
+                        <button onClick={function(){setStep(4);}}
+                          style={{padding:"9px 18px",borderRadius:8,border:"none",
+                            background:"transparent",color:C.t2,fontSize:13,fontWeight:500,
+                            transition:"all 0.15s"}}
+                          onMouseEnter={function(e){e.currentTarget.style.color=C.tx;}}
+                          onMouseLeave={function(e){e.currentTarget.style.color=C.t2;}}>
+                          Skip for now
+                        </button>
+                      )}
+                      <button id="nc-tour-continue" onClick={next}
+                        style={{padding:"10px 26px",borderRadius:8,border:"none",
+                          background:C.acc,color:C.wh,fontSize:14,fontWeight:700,
+                          boxShadow:"0 3px 12px rgba(37,99,168,0.35)",transition:"all 0.15s"}}
+                        onMouseEnter={function(e){e.currentTarget.style.boxShadow="0 6px 20px rgba(37,99,168,0.45)";}}
+                        onMouseLeave={function(e){e.currentTarget.style.boxShadow="0 3px 12px rgba(37,99,168,0.35)";}}>
+                        {step===4?"✓ Create Client":"Continue →"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {toast&&<Toast msg={toast} onHide={function(){setToast(null);}}/>}
+      {showDemo&&<TooltipTourNewClient onDone={function(){setShowDemo(false);}}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VETS – Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sora:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;overflow:hidden}
+body{font-family:"Outfit",sans-serif}
+button{cursor:pointer;border:none;outline:none;font-family:"Outfit",sans-serif}
+input{font-family:"Outfit",sans-serif;outline:none}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:#C5CDD8;border-radius:4px}
+
+@keyframes fadeUp {
+  from{opacity:0;transform:translateY(16px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes shimmer {
+  0%{background-position:200% center}
+  100%{background-position:-200% center}
+}
+@keyframes floatA {
+  0%,100%{transform:translateY(0px) rotate(-2deg)}
+  50%{transform:translateY(-10px) rotate(-2deg)}
+}
+@keyframes floatB {
+  0%,100%{transform:translateY(0px) rotate(3deg)}
+  50%{transform:translateY(-14px) rotate(3deg)}
+}
+@keyframes floatC {
+  0%,100%{transform:translateY(0px) rotate(-1deg)}
+  50%{transform:translateY(-8px) rotate(-1deg)}
+}
+@keyframes spinIn {
+  from{opacity:0;transform:scale(0.6) rotate(-20deg)}
+  to{opacity:1;transform:scale(1) rotate(0deg)}
+}
+@keyframes pulse {
+  0%,100%{box-shadow:0 0 0 0 rgba(37,99,168,0.4)}
+  60%{box-shadow:0 0 0 8px rgba(37,99,168,0)}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useRef} = React;
+
+/* ── demo credentials ── */
+const DEMO_EMAIL    = "maya@vets-clinic.com";
+const DEMO_PASSWORD = "demo1234";
+
+/* ── feature bullets for left panel ── */
+const FEATURES = [
+  {icon:"📋", title:"Smart Client Files", desc:"Full medical history, billing & documents in one place"},
+  {icon:"📅", title:"Appointment Board", desc:"Drag-and-drop scheduling with real-time status tracking"},
+  {icon:"💊", title:"Prescription Manager", desc:"One-click refills, drug interaction alerts, digital Rx"},
+  {icon:"📊", title:"Lab & Diagnostics", desc:"Inline results, X-ray viewer, trend charts over time"},
+];
+
+/* ── floating cards (decorative) ── */
+function FloatingCard({style, children}){
+  return(
+    <div style={Object.assign({
+      background:"rgba(255,255,255,0.07)",
+      border:"1px solid rgba(255,255,255,0.12)",
+      borderRadius:12,
+      backdropFilter:"blur(8px)",
+      padding:"10px 14px",
+    }, style)}>
+      {children}
+    </div>
+  );
+}
+
+function App(){
+  const [email,    setEmail]    = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw,   setShowPw]   = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const [errs,     setErrs]     = useState({});
+  const [shake,    setShake]    = useState(false);
+  const [autofilled, setAutofilled] = useState(false);
+  const emailRef = useRef(null);
+
+  /* focus email on mount */
+  useEffect(function(){ if(emailRef.current) emailRef.current.focus(); }, []);
+
+  function validate(){
+    var e = {};
+    if(!email.trim())            e.email    = "Email is required";
+    else if(!/\S+@\S+\.\S+/.test(email)) e.email = "Enter a valid email";
+    if(!password)                e.password = "Password is required";
+    else if(password.length < 6) e.password = "Password must be at least 6 characters";
+    return e;
+  }
+
+  function handleSubmit(ev){
+    ev.preventDefault();
+    var e = validate();
+    if(Object.keys(e).length > 0){ setErrs(e); triggerShake(); return; }
+    setErrs({});
+    setLoading(true);
+
+    /* simulate auth — any valid-looking email + 6+ char pw works for demo */
+    setTimeout(function(){
+      setLoading(false);
+      window.location.href = "vets-reception.html";
+    }, 1400);
+  }
+
+  function triggerShake(){
+    setShake(true);
+    setTimeout(function(){ setShake(false); }, 520);
+  }
+
+  function fillDemo(){
+    setEmail(DEMO_EMAIL);
+    setPassword(DEMO_PASSWORD);
+    setErrs({});
+    setAutofilled(true);
+    setTimeout(function(){ setAutofilled(false); }, 1800);
+  }
+
+  /* shared input style */
+  function inpStyle(hasErr){
+    return {
+      width:"100%", padding:"12px 14px",
+      border:"1.5px solid "+(hasErr?"#DC2626":"#D1D9E6"),
+      borderRadius:10, fontSize:14, color:"#0F172A",
+      background: hasErr ? "#FFF5F5" : "#F8FAFC",
+      transition:"border-color 0.15s, box-shadow 0.15s",
+    };
+  }
+
+  var cardAnim = shake
+    ? {animation:"none", transform:"translateX(0)"}
+    : {};
+
+  return(
+    <div style={{display:"flex", height:"100vh", overflow:"hidden"}}>
+
+      {/* ══ LEFT PANEL — branding ══ */}
+      <div style={{
+        width:"50%", flexShrink:0,
+        background:"linear-gradient(145deg, #0D1F35 0%, #0d2a4a 50%, #0a1a2e 100%)",
+        display:"flex", flexDirection:"column",
+        position:"relative", overflow:"hidden",
+        padding:"48px 52px",
+      }}>
+
+        {/* subtle radial glow */}
+        <div style={{
+          position:"absolute", top:"-20%", left:"-10%",
+          width:"70%", height:"70%",
+          background:"radial-gradient(ellipse, rgba(37,99,168,0.22) 0%, transparent 65%)",
+          pointerEvents:"none",
+        }}/>
+        <div style={{
+          position:"absolute", bottom:"-15%", right:"-5%",
+          width:"60%", height:"60%",
+          background:"radial-gradient(ellipse, rgba(8,145,178,0.12) 0%, transparent 65%)",
+          pointerEvents:"none",
+        }}/>
+
+        {/* dot grid texture */}
+        <div style={{
+          position:"absolute", inset:0,
+          backgroundImage:"radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)",
+          backgroundSize:"28px 28px",
+          pointerEvents:"none",
+        }}/>
+
+        {/* Logo */}
+        <div style={{display:"flex", alignItems:"center", gap:12, position:"relative", animation:"fadeUp 0.5s ease both"}}>
+          <div style={{
+            width:44, height:44, borderRadius:12,
+            background:"linear-gradient(135deg,#2563A8,#1a4a8a)",
+            display:"flex", alignItems:"center", justifyContent:"center",
+            fontSize:20, boxShadow:"0 4px 16px rgba(37,99,168,0.45)",
+          }}>🐾</div>
+          <div>
+            <div style={{fontSize:22, fontWeight:700, color:"#fff", fontFamily:"Sora,sans-serif", letterSpacing:"0.06em"}}>VETS</div>
+            <div style={{fontSize:10, color:"rgba(255,255,255,0.28)", fontFamily:"DM Mono,monospace", letterSpacing:"0.12em"}}>CLINIC OS</div>
+          </div>
+        </div>
+
+        {/* Headline */}
+        <div style={{marginTop:56, position:"relative", animation:"fadeUp 0.55s 0.08s ease both", opacity:0, animationFillMode:"forwards"}}>
+          <div style={{
+            fontSize:34, fontWeight:700, color:"#fff",
+            fontFamily:"Sora,sans-serif", lineHeight:1.2, marginBottom:14,
+          }}>
+            The smarter<br/>
+            <span style={{
+              background:"linear-gradient(90deg,#60A5FA,#38BDF8,#60A5FA)",
+              backgroundSize:"200% auto",
+              WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
+              animation:"shimmer 3s linear infinite",
+            }}>clinic platform.</span>
+          </div>
+          <div style={{fontSize:14, color:"rgba(255,255,255,0.45)", lineHeight:1.6, maxWidth:320}}>
+            Everything your practice needs — scheduling, records, billing and diagnostics — unified in one modern workspace.
+          </div>
+        </div>
+
+        {/* Feature list */}
+        <div style={{marginTop:44, display:"flex", flexDirection:"column", gap:20, position:"relative", animation:"fadeUp 0.55s 0.16s ease both", opacity:0, animationFillMode:"forwards"}}>
+          {FEATURES.map(function(f, i){
+            return(
+              <div key={i} style={{display:"flex", alignItems:"flex-start", gap:14}}>
+                <div style={{
+                  width:36, height:36, borderRadius:10, flexShrink:0,
+                  background:"rgba(255,255,255,0.06)",
+                  border:"1px solid rgba(255,255,255,0.1)",
+                  display:"flex", alignItems:"center", justifyContent:"center",
+                  fontSize:16,
+                }}>
+                  {f.icon}
+                </div>
+                <div>
+                  <div style={{fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.88)", marginBottom:2}}>{f.title}</div>
+                  <div style={{fontSize:12, color:"rgba(255,255,255,0.38)", lineHeight:1.5}}>{f.desc}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Floating decorative cards */}
+        <FloatingCard style={{
+          position:"absolute", bottom:88, right:32,
+          animation:"floatA 5s ease-in-out infinite",
+          minWidth:170,
+        }}>
+          <div style={{display:"flex", alignItems:"center", gap:9}}>
+            <div style={{width:30, height:30, borderRadius:8, background:"rgba(22,163,74,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14}}>🐶</div>
+            <div>
+              <div style={{fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.85)"}}>Snoopy — V-1043</div>
+              <div style={{fontSize:10, color:"rgba(255,255,255,0.35)", marginTop:1}}>In Progress · Dr. Cohen</div>
+            </div>
+          </div>
+        </FloatingCard>
+
+        <FloatingCard style={{
+          position:"absolute", bottom:162, right:56,
+          animation:"floatB 6s 1s ease-in-out infinite",
+          minWidth:148,
+        }}>
+          <div style={{fontSize:10, color:"rgba(255,255,255,0.4)", fontFamily:"DM Mono,monospace", marginBottom:5}}>TODAY'S SCHEDULE</div>
+          <div style={{display:"flex", alignItems:"baseline", gap:5}}>
+            <span style={{fontSize:26, fontWeight:700, color:"#fff", fontFamily:"DM Mono,monospace"}}>14</span>
+            <span style={{fontSize:11, color:"rgba(255,255,255,0.4)"}}>appointments</span>
+          </div>
+          <div style={{marginTop:6, display:"flex", gap:4}}>
+            {["#16A34A","#16A34A","#16A34A","#D97706","#D97706","#2563A8","#2563A8","#94A3B8"].map(function(c,i){
+              return <div key={i} style={{width:14, height:4, borderRadius:2, background:c, opacity:0.8}}/>;
+            })}
+          </div>
+        </FloatingCard>
+
+        <FloatingCard style={{
+          position:"absolute", bottom:52, right:186,
+          animation:"floatC 4.5s 0.5s ease-in-out infinite",
+          minWidth:130,
+        }}>
+          <div style={{display:"flex", alignItems:"center", gap:7}}>
+            <span style={{fontSize:16}}>💊</span>
+            <div>
+              <div style={{fontSize:11, fontWeight:600, color:"rgba(255,255,255,0.8)"}}>Rx ready</div>
+              <div style={{fontSize:10, color:"rgba(255,255,255,0.35)"}}>Luna · Apoquel</div>
+            </div>
+          </div>
+        </FloatingCard>
+
+        {/* Bottom tagline */}
+        <div style={{marginTop:"auto", fontSize:11, color:"rgba(255,255,255,0.18)", fontFamily:"DM Mono,monospace", letterSpacing:"0.06em", position:"relative"}}>
+          © 2026 VETS Clinic OS · Designed by Nati Edri
+        </div>
+      </div>
+
+      {/* ══ RIGHT PANEL — form ══ */}
+      <div style={{
+        flex:1,
+        background:"#F4F6F9",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        padding:"32px 24px",
+        position:"relative",
+        overflow:"hidden",
+      }}>
+
+        {/* subtle background texture */}
+        <div style={{
+          position:"absolute", inset:0,
+          backgroundImage:"radial-gradient(rgba(37,99,168,0.04) 1px, transparent 1px)",
+          backgroundSize:"24px 24px",
+          pointerEvents:"none",
+        }}/>
+
+        <div style={{
+          width:"100%", maxWidth:420,
+          animation:"fadeUp 0.5s 0.1s ease both",
+          opacity:0, animationFillMode:"forwards",
+          position:"relative",
+        }}>
+
+          {/* Card */}
+          <div style={Object.assign({
+            background:"#fff",
+            borderRadius:20,
+            boxShadow:"0 4px 40px rgba(0,0,0,0.09), 0 1px 4px rgba(0,0,0,0.04)",
+            padding:"40px 40px 36px",
+            transition:"transform 0.08s ease",
+          }, shake ? {animation:"shakeX 0.5s ease"} : {})}>
+
+            {/* Header */}
+            <div style={{marginBottom:28}}>
+              <div style={{fontSize:22, fontWeight:700, color:"#0F172A", fontFamily:"Sora,sans-serif", marginBottom:6}}>
+                Welcome back 👋
+              </div>
+              <div style={{fontSize:14, color:"#64748B"}}>
+                Sign in to your clinic workspace
+              </div>
+            </div>
+
+            {/* Demo hint */}
+            <div style={{
+              background: autofilled ? "#F0FDF4" : "#EFF6FF",
+              border:"1px solid "+(autofilled ? "#BBF7D0" : "#BFDBFE"),
+              borderRadius:10, padding:"10px 14px",
+              marginBottom:22, display:"flex", alignItems:"center", gap:10,
+              transition:"background 0.3s, border-color 0.3s",
+            }}>
+              <span style={{fontSize:15, flexShrink:0}}>{autofilled ? "✅" : "💡"}</span>
+              <div style={{flex:1, minWidth:0}}>
+                <span style={{fontSize:12, color: autofilled ? "#15803D" : "#1D4ED8", fontWeight:500}}>
+                  {autofilled ? "Demo credentials filled — click Sign In" : "Try the demo"}
+                </span>
+                {!autofilled && <span style={{fontSize:12, color:"#64748B"}}> — or </span>}
+                {!autofilled && (
+                  <button onClick={fillDemo} style={{
+                    fontSize:12, color:"#2563A8", background:"none", border:"none",
+                    fontWeight:700, cursor:"pointer", padding:0, textDecoration:"underline",
+                    textDecorationStyle:"dotted",
+                  }}>fill credentials</button>
+                )}
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} noValidate>
+
+              {/* Email */}
+              <div style={{marginBottom:16}}>
+                <label style={{display:"block", fontSize:12, fontWeight:600, color:"#475569", marginBottom:6, letterSpacing:"0.03em"}}>
+                  Email address
+                </label>
+                <input
+                  ref={emailRef}
+                  type="email"
+                  value={email}
+                  onChange={function(e){setEmail(e.target.value); if(errs.email)setErrs(function(p){var n=Object.assign({},p);delete n.email;return n;});}}
+                  placeholder="you@clinic.com"
+                  autoComplete="email"
+                  style={inpStyle(!!errs.email)}
+                />
+                {errs.email && <div style={{fontSize:11, color:"#DC2626", marginTop:4}}>{errs.email}</div>}
+              </div>
+
+              {/* Password */}
+              <div style={{marginBottom:8}}>
+                <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
+                  <label style={{fontSize:12, fontWeight:600, color:"#475569", letterSpacing:"0.03em"}}>Password</label>
+                  <button type="button" style={{fontSize:12, color:"#2563A8", background:"none", border:"none", cursor:"pointer", fontWeight:500}}>
+                    Forgot password?
+                  </button>
+                </div>
+                <div style={{position:"relative"}}>
+                  <input
+                    type={showPw ? "text" : "password"}
+                    value={password}
+                    onChange={function(e){setPassword(e.target.value); if(errs.password)setErrs(function(p){var n=Object.assign({},p);delete n.password;return n;});}}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    style={Object.assign({paddingRight:44}, inpStyle(!!errs.password))}
+                  />
+                  <button
+                    type="button"
+                    onClick={function(){setShowPw(function(v){return !v;});}}
+                    style={{
+                      position:"absolute", right:12, top:"50%", transform:"translateY(-50%)",
+                      background:"none", border:"none", cursor:"pointer",
+                      fontSize:15, color:"#94A3B8", lineHeight:1,
+                      padding:"2px 4px",
+                    }}
+                    title={showPw ? "Hide password" : "Show password"}
+                  >
+                    {showPw ? "🙈" : "👁"}
+                  </button>
+                </div>
+                {errs.password && <div style={{fontSize:11, color:"#DC2626", marginTop:4}}>{errs.password}</div>}
+              </div>
+
+              {/* Remember me */}
+              <div style={{display:"flex", alignItems:"center", gap:8, marginBottom:24, marginTop:12}}>
+                <input type="checkbox" id="rememberMe" style={{accentColor:"#2563A8", width:14, height:14, cursor:"pointer"}}/>
+                <label htmlFor="rememberMe" style={{fontSize:13, color:"#475569", cursor:"pointer", userSelect:"none"}}>Keep me signed in</label>
+              </div>
+
+              {/* Submit */}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width:"100%", padding:"13px",
+                  background: loading
+                    ? "#94A3B8"
+                    : "linear-gradient(135deg,#2563A8,#1a4a8a)",
+                  color:"#fff", border:"none", borderRadius:10,
+                  fontSize:14, fontWeight:700,
+                  fontFamily:"Sora,sans-serif",
+                  letterSpacing:"0.02em",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  boxShadow: loading ? "none" : "0 4px 18px rgba(37,99,168,0.38)",
+                  transition:"background 0.2s, box-shadow 0.2s, transform 0.1s",
+                  display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+                  animation: loading ? "none" : "pulse 2.5s ease-in-out infinite",
+                }}
+              >
+                {loading ? (
+                  <>
+                    <span style={{
+                      width:16, height:16, borderRadius:"50%",
+                      border:"2px solid rgba(255,255,255,0.3)",
+                      borderTopColor:"#fff",
+                      display:"inline-block",
+                      animation:"spin 0.7s linear infinite",
+                    }}/>
+                    Signing in…
+                  </>
+                ) : "Sign In →"}
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div style={{display:"flex", alignItems:"center", gap:12, margin:"22px 0"}}>
+              <div style={{flex:1, height:1, background:"#E2E7EF"}}/>
+              <span style={{fontSize:11, color:"#94A3B8", fontFamily:"DM Mono,monospace"}}>OR</span>
+              <div style={{flex:1, height:1, background:"#E2E7EF"}}/>
+            </div>
+
+            {/* SSO */}
+            <button style={{
+              width:"100%", padding:"11px",
+              background:"#F8FAFC", border:"1.5px solid #E2E7EF",
+              borderRadius:10, fontSize:13, fontWeight:600, color:"#334155",
+              display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+              cursor:"pointer", transition:"background 0.15s, border-color 0.15s",
+            }}
+              onMouseEnter={function(e){e.currentTarget.style.background="#EFF6FF"; e.currentTarget.style.borderColor="#BFDBFE";}}
+              onMouseLeave={function(e){e.currentTarget.style.background="#F8FAFC"; e.currentTarget.style.borderColor="#E2E7EF";}}
+            >
+              <span style={{fontSize:16}}>🏥</span>
+              Continue with Clinic SSO
+            </button>
+
+          </div>
+
+          {/* Sign-up link */}
+          <div style={{textAlign:"center", marginTop:20, fontSize:13, color:"#64748B"}}>
+            New to VETS?{" "}
+            <button style={{
+              background:"none", border:"none", cursor:"pointer",
+              fontSize:13, fontWeight:700, color:"#2563A8",
+              textDecoration:"underline", textDecorationStyle:"dotted",
+            }}>
+              Create your clinic account
+            </button>
+          </div>
+
+          {/* Version */}
+          <div style={{textAlign:"center", marginTop:16, fontSize:11, color:"#94A3B8", fontFamily:"DM Mono,monospace", letterSpacing:"0.06em"}}>
+            Designed by Nati Edri · UI &amp; UX
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+/* spinner keyframes via style tag */
+var style = document.createElement("style");
+style.textContent = `
+@keyframes spin {
+  from{transform:rotate(0deg)} to{transform:rotate(360deg)}
+}
+@keyframes shakeX {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-8px)}
+  40%{transform:translateX(8px)}
+  60%{transform:translateX(-5px)}
+  80%{transform:translateX(5px)}
+}
+`;
+document.head.appendChild(style);
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
