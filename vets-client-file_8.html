@@ -367,12 +367,12 @@ var CLIENT_EMPTY={
 
 /* ── TOOLTIP TOUR STEPS ── */
 var TOUR_STEPS=[
-  {id:"tour-new-visit",    title:"Start a New Visit",   desc:"Click here to open the visit panel — record chief complaint, vitals, SOAP notes, and medications in one flow.",    placement:"bottom"},
-  {id:"tour-vaccines",     title:"Vaccines & Health",   desc:"The Health tab covers vaccines, lab results, and vitals. Track every vaccine, add new doses, and send vaccination logs directly to the owner.", placement:"bottom"},
-  {id:"tour-labs-sub",     title:"Labs & Diagnostics",  desc:"View blood panels, urinalysis, and X-rays side by side. Filter by date range or category to find results fast.",   placement:"bottom"},
-  {id:"tour-prescriptions",title:"Prescriptions",       desc:"The Records tab holds Rx and documents. Issue prescriptions digitally — active meds sync to the patient summary automatically.", placement:"bottom"},
-  {id:"tour-billing",      title:"Billing & Payments",  desc:"See a full invoice history, outstanding balance, and collect payment in 5 steps via the built-in Payment Wizard.", placement:"bottom"},
-  {id:"tour-send-docs",    title:"Send Docs",           desc:"Export records to the owner via WhatsApp, Email, or PDF — choose which files, which pet, and what date range.",    placement:"left"},
+  {id:"tour-new-visit",    title:"Start a New Visit",   desc:"Click here to open the visit panel — record chief complaint, vitals, SOAP notes, and medications in one flow.",    placement:"bottom", tab:"visits"},
+  {id:"tour-vaccines",     title:"Vaccines & Health",   desc:"The Health tab covers vaccines, lab results, and vitals. Track every vaccine, add new doses, and send vaccination logs directly to the owner.", placement:"bottom", tab:"health", sub:"vaccines"},
+  {id:"tour-labs-sub",     title:"Labs & Diagnostics",  desc:"View blood panels, urinalysis, and X-rays side by side. Filter by date range or category to find results fast.",   placement:"bottom", tab:"health", sub:"labs"},
+  {id:"tour-prescriptions",title:"Prescriptions",       desc:"The Records tab holds Rx and documents. Issue prescriptions digitally — active meds sync to the patient summary automatically.", placement:"bottom", tab:"records", sub:"prescriptions"},
+  {id:"tour-billing",      title:"Billing & Payments",  desc:"See a full invoice history, outstanding balance, and collect payment in 5 steps via the built-in Payment Wizard.", placement:"bottom", tab:"billing"},
+  {id:"tour-send-docs",    title:"Send Docs",           desc:"Export records to the owner via WhatsApp, Email, or PDF — choose which files, which pet, and what date range.",    placement:"left",   tab:"billing"},
 ];
 
 function StatusBadge({status}){
@@ -3281,17 +3281,27 @@ function ProcedureEditPanel({proc,onUpdate,onAdvance,onAddCharge,onRemoveCharge}
 
 <!-- ═══ SCRIPT 6.8 · TooltipTour ═══ -->
 <script type="text/babel">
-function TooltipTour({steps,onDone}){
+function TooltipTour({steps,onDone,onStep}){
   const [idx,setIdx]=useState(0);
   const [pos,setPos]=useState(null);
   const tooltipRef=useRef(null);
+  const [ready,setReady]=useState(false);
 
   var step=steps[idx];
 
+  /* When idx changes: first fire onStep to switch tab, then wait 120ms for DOM, then measure */
   useEffect(function(){
+    setPos(null);
+    setReady(false);
+    if(onStep){onStep(step);}
+    var t=setTimeout(function(){setReady(true);},150);
+    return function(){clearTimeout(t);};
+  },[idx]);
+
+  useEffect(function(){
+    if(!ready)return;
     var el=document.getElementById(step.id);
     if(!el)return;
-    /* scroll into view then measure */
     el.scrollIntoView({block:"nearest",inline:"nearest"});
     function measure(){
       var r=el.getBoundingClientRect();
@@ -3300,7 +3310,7 @@ function TooltipTour({steps,onDone}){
     measure();
     window.addEventListener("resize",measure);
     return function(){window.removeEventListener("resize",measure);};
-  },[idx]);
+  },[ready]);
 
   if(!pos)return null;
 
@@ -3927,16 +3937,10 @@ function App(){
               </button>
             </div>
           )}
-          {/* Start Demo — full label when open, ▶ icon-only when collapsed */}
-          <button onClick={function(){setShowDemo(function(v){return !v;});}} title={showDemo?"Pause Demo":"Start Demo"}
-            style={{display:"flex",alignItems:"center",justifyContent:sbOpen?"flex-start":"center",gap:9,padding:"9px 11px",borderRadius:8,fontSize:11,width:"100%",marginBottom:4,border:"1px solid rgba(37,99,168,0.5)",background:showDemo?"rgba(37,99,168,0.25)":"rgba(37,99,168,0.12)",color:"rgba(148,190,255,0.95)",cursor:"pointer",fontWeight:700,fontFamily:"Sora,sans-serif",transition:"all 0.15s"}}>
-            <span style={{width:17,textAlign:"center",flexShrink:0,fontSize:13}}>{showDemo?"⏸":"▶"}</span>
-            {sbOpen&&(showDemo?"Pause Demo":"Start Demo")}
-          </button>
-          {/* Tour ? — always visible, icon-only when collapsed */}
+          {/* Feature Tour — full label when open, ▶ icon-only when collapsed */}
           <button onClick={function(){setShowTour(true);}} title="Feature Tour"
-            style={{display:"flex",alignItems:"center",justifyContent:sbOpen?"flex-start":"center",gap:9,padding:"9px 11px",borderRadius:8,fontSize:11,width:"100%",marginBottom:4,border:"1px solid rgba(255,255,255,0.1)",background:"rgba(255,255,255,0.04)",color:"rgba(255,255,255,0.45)",cursor:"pointer"}}>
-            <span style={{width:17,textAlign:"center",flexShrink:0,fontSize:13}}>?</span>
+            style={{display:"flex",alignItems:"center",justifyContent:sbOpen?"flex-start":"center",gap:9,padding:"9px 11px",borderRadius:8,fontSize:11,width:"100%",marginBottom:4,border:"1px solid rgba(37,99,168,0.5)",background:"rgba(37,99,168,0.12)",color:"rgba(148,190,255,0.95)",cursor:"pointer",fontWeight:700,fontFamily:"Sora,sans-serif",transition:"all 0.15s"}}>
+            <span style={{width:17,textAlign:"center",flexShrink:0,fontSize:13}}>▶</span>
             {sbOpen&&"Feature Tour"}
           </button>
           <button onClick={function(){try{localStorage.clear();}catch(e){}location.href="vets-reception.html";}} title="Reset prototype to initial state"
@@ -4208,7 +4212,13 @@ function App(){
       </div>
       {exportToast&&<Toast msg={exportToast} icon="📤" onHide={function(){setExportToast(null);}}/>}
       {showSendDocs&&<SendDocsModal client={activeClient} pets={activeClient.pets} staff={staff} onExportStart={startExport} onClose={function(){setShowSendDocs(false);}}/>}
-      {showTour&&<TooltipTour steps={TOUR_STEPS} onDone={function(){setShowTour(false);}}/>}
+      {showTour&&<TooltipTour steps={TOUR_STEPS} onDone={function(){setShowTour(false);}} onStep={function(step){
+        if(step.tab){setActiveTab(step.tab);}
+        if(step.sub){
+          if(step.tab==="health")setHealthSub(step.sub);
+          if(step.tab==="records")setRecordsSub(step.sub);
+        }
+      }}/>}
       {showDemo&&demoMode&&<DemoWalkthrough onClose={function(){setShowDemo(false);}} onAction={function(a){
         if(a.tab){setActiveTab(a.tab);if(a.sub){if(a.tab==="health")setHealthSub(a.sub);if(a.tab==="records")setRecordsSub(a.sub);}}
         if(a.triggerNew){setActiveTab("visits");setTriggerNew(function(n){return n+1;});}
